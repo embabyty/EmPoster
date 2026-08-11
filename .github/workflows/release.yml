@@ -1,0 +1,112 @@
+name: Release IPA
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v3.2.2). Leave empty to use MARKETING_VERSION.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -project "Pocket Poster.xcodeproj" \
+            -scheme "Pocket Poster" \
+            -resolvePackageDependencies
+
+      - name: Build IPA
+        run: |
+          chmod +x ./ipabuild.sh
+          ./ipabuild.sh
+
+      - name: Prepare release files
+        id: meta
+        run: |
+          set -euo pipefail
+          APP_PLIST="build/DerivedDataApp/Build/Products/Release-iphoneos/Pocket Poster.app/Info.plist"
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_PLIST")
+          BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PLIST")
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PLIST")
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="v${VERSION}"
+          fi
+
+          # ipabuild.sh emits Pocket_Poster.ipa (+ legacy name)
+          test -f "build/Pocket_Poster.ipa" || cp "build/Pocket Poster.ipa" "build/Pocket_Poster.ipa"
+          cp "build/Pocket_Poster.ipa" "build/Pocket_Poster_${VERSION}.ipa"
+
+          {
+            echo "version=$VERSION"
+            echo "build=$BUILD"
+            echo "bundle_id=$BUNDLE_ID"
+            echo "tag=$TAG"
+          } >> "$GITHUB_OUTPUT"
+
+          cat > release_notes.md <<EOF
+## Pocket Poster ${VERSION}
+
+bad_query fork for **iOS 26 – 27.0b4**
+
+- On-device PosterBoard hash (no PC / Nugget)
+- Apply wallpapers via sandbox escape
+- Reset Collections (descriptor wipe)
+- Mond-style WebKit respring (works in LiveContainer)
+
+**Bundle ID:** \`${BUNDLE_ID}\`
+**Build:** ${BUILD}
+
+Sideload with TrollStore / SideStore / LiveContainer.
+
+---
+Credits: [forcequitOS/bad_query](https://github.com/forcequitOS/bad_query) · original [leminlimez/Pocket-Poster](https://github.com/leminlimez/Pocket-Poster)
+EOF
+
+          ls -lh build/*.ipa
+          echo "Tag: $TAG  Version: $VERSION"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: Pocket Poster ${{ steps.meta.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            build/Pocket_Poster.ipa
+            build/Pocket_Poster_${{ steps.meta.outputs.version }}.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

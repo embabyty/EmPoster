@@ -11,6 +11,17 @@
   </a>
 </div>
 
+## Download
+
+Latest IPA: [**Releases**](https://github.com/Mak5er/Pocket-Poster/releases/latest)
+
+CI builds an unsigned IPA on every push to `main` and publishes a GitHub Release when you push a tag like `v3.2.2` (or run **Release IPA** from Actions).
+
+```bash
+# cut a release from your machine
+git tag v3.2.2 && git push origin v3.2.2
+```
+
 ## Getting Started
 
 ### iOS 26 / 27.0b4 (bad_query)

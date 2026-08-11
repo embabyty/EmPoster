@@ -42,7 +42,12 @@ fi
 mkdir Payload
 cp -r "${APPLICATION_NAME}.app" "Payload/${APPLICATION_NAME}.app"
 strip "Payload/${APPLICATION_NAME}.app/${APPLICATION_NAME}"
-zip -vr "${APPLICATION_NAME}.ipa" Payload
+# quiet zip for CI logs; name with underscore for download URLs
+zip -qr "Pocket_Poster.ipa" Payload
+# keep legacy name too
+cp "Pocket_Poster.ipa" "${APPLICATION_NAME}.ipa"
 rm -rf "${APPLICATION_NAME}.app"
 rm -rf Payload
+echo "Built: $WORKING_LOCATION/build/Pocket_Poster.ipa"
+echo "Built: $WORKING_LOCATION/build/${APPLICATION_NAME}.ipa"
 
