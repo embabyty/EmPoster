@@ -34,7 +34,12 @@ class SymHandler {
         return getLCDocumentsDirectory().appendingPathComponent(".Trash", conformingTo: .symbolicLink)
     }
     
-    // MARK: Symlink Creation
+    /// Prefer bad_query (iOS 26/27 sandbox escape); fall back to .Trash symlink exploit.
+    static var prefersBadQuery: Bool {
+        BadQuery.isAvailable
+    }
+    
+    // MARK: Symlink Creation (legacy exploit for older iOS)
     static func createSymlink(to path: String) throws -> URL {
         // returns the url of the symlink
         let symURL = getSymlinkURL()
@@ -62,6 +67,47 @@ class SymHandler {
         let extVer = SymHandler.getExtensionVersion()
         print("linking to \(appHash)/Library/Application Support/PRBPosterExtensionDataStore/\(extVer)/Extensions/\(ext)/descriptors")
         return try createAppSymlink(for: "\(appHash)/Library/Application Support/PRBPosterExtensionDataStore/\(extVer)/Extensions/\(ext)/descriptors")
+    }
+    
+    // MARK: Direct write via bad_query
+    
+    /// Copy descriptor folders into PosterBoard descriptors using sandbox escape.
+    static func writeDescriptorsViaBadQuery(appHash: String, ext: String, descriptorFolders: [URL]) throws {
+        let destPath = BadQuery.descriptorsPath(appHash: appHash, ext: ext)
+        print("bad_query writing to \(destPath)")
+        
+        // Ensure descriptors directory exists (open parent chain if needed)
+        try BadQuery.ensureDirectory(at: destPath)
+        
+        let handle = try BadQuery.consume(path: destPath, create: true)
+        defer { handle.release() }
+        
+        let fm = FileManager.default
+        for descr in descriptorFolders {
+            guard descr.lastPathComponent != "__MACOSX" else { continue }
+            let destName = UUID().uuidString
+            let destURL = URL(fileURLWithPath: destPath).appendingPathComponent(destName)
+            if fm.fileExists(atPath: destURL.path) {
+                try fm.removeItem(at: destURL)
+            }
+            try fm.copyItem(at: descr, to: destURL)
+        }
+    }
+    
+    /// Copy files into an absolute directory under an app container via bad_query.
+    static func writeFilesViaBadQuery(toDirectory destPath: String, files: [URL]) throws {
+        try BadQuery.ensureDirectory(at: destPath)
+        let handle = try BadQuery.consume(path: destPath, create: true)
+        defer { handle.release() }
+        
+        let fm = FileManager.default
+        for file in files {
+            let destURL = URL(fileURLWithPath: destPath).appendingPathComponent(file.lastPathComponent)
+            if fm.fileExists(atPath: destURL.path) {
+                try fm.removeItem(at: destURL)
+            }
+            try fm.copyItem(at: file, to: destURL)
+        }
     }
     
     static func cleanup() {

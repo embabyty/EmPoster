@@ -4,18 +4,25 @@
 
 <div align="center">
   <h1><b>Pocket Poster</b></h1>
-  <p><i>Custom PosterBoard Wallpapers for iOS 17+</i></p>
+  <p><i>Custom PosterBoard Wallpapers for iOS 17+ · bad_query for iOS 26–27.0b4</i></p>
+  <p>Maintained / iOS 27 port by <a href="https://github.com/Mak5er"><b>Mak5er</b></a></p>
   <a href="https://celloserenity.github.io/altdirect/?url=https://raw.githubusercontent.com/SerStars/Nugget-Wallpapers/refs/heads/main/other/pocketposter_source.json" target="_blank">
    <img src="https://raw.githubusercontent.com/CelloSerenity/altdirect/refs/heads/main/assets/png/AltSource_White.png" width="150">
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/leminlimez/Pocket-Poster/releases/latest/download/pocket_poster.ipa" target="_blank">
-   <img src="https://raw.githubusercontent.com/CelloSerenity/altdirect/refs/heads/main/assets/png/Download_White.png" width="150">
   </a>
 </div>
 
 ## Getting Started
-Since there is no way to read files currently, you will need a computer to get the App Hash/UUID.
+
+### iOS 26 / 27.0b4 (bad_query)
+On versions where [bad_query][badQueryGitHub] works, **no computer is required**:
+1. Install the IPA (sideload with TrollStore / SideStore / etc.).
+2. Settings → **Detect On-Device** (or just hit Apply — hash auto-detects).
+3. Select tendies / video → **Apply** → device does a **full respring** (Frontboard + Backboard).
+
+**Reset Collections** wipes PosterBoard descriptors via bad_query, then full resprings the same way.
+
+### Older iOS (legacy .Trash exploit)
+You will need a computer to get the App Hash/UUID.
 
 Download [Nugget][NuggetGitHub] on your computer and plug in your phone.
 <br>Then, navigate to the `Settings` page and click the `Pocket Poster Helper` button. 
@@ -25,14 +32,19 @@ Community-made wallpapers can be found on the [official Cowabun.ga site][Cowabun
 <br>Join the [Cowabunga Discord Server][CowabungaDiscord] for additional help.
 
 ## Credits
-- Translations crowdsourced using [POEditor][POEditorJoin]. Thank you everyone who assisted in the translation effort!
+- **[Mak5er][Mak5erGitHub]** — bad_query integration, iOS 27 port, full respring, on-device detect
+- [LeminLimez][LeminGitHub] — original Pocket Poster
+- Translations crowdsourced using [POEditor][POEditorJoin]
 - [PosterRestore][PosterRestoreDiscord] for their help with PosterBoard
 - [dootskyre][dootskyreX] for the fallback shortcut
-- [Nathan][NathanGitHub] and [DuyKhanhTran][DuyKhanhTranGitHub] for the exploit
+- [Nathan][NathanGitHub] and [DuyKhanhTran][DuyKhanhTranGitHub] for the .Trash exploit
+- [forcequitOS][badQueryGitHub] for bad_query (iOS 26/27 sandbox escape)
 - [SerStars][SerStarsX] for creating the website
 
 [CowabungaWallpapersPage]: https://cowabun.ga/wallpapers
 [NuggetGitHub]: https://github.com/leminlimez/Nugget
+[LeminGitHub]: https://github.com/leminlimez
+[Mak5erGitHub]: https://github.com/Mak5er
 [CowabungaDiscord]: https://discord.gg/cowabunga
 [PosterRestoreDiscord]: https://discord.gg/gWtzTVhMvh
 
@@ -41,3 +53,4 @@ Community-made wallpapers can be found on the [official Cowabun.ga site][Cowabun
 [NathanGitHub]: https://github.com/verygenericname
 [DuyKhanhTranGitHub]: https://github.com/khanhduytran0
 [SerStarsX]: https://x.com/SerStars
+[badQueryGitHub]: https://github.com/forcequitOS/bad_query

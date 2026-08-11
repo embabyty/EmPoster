@@ -134,13 +134,32 @@ class CarPlayManager {
             }
         }
         
-        // symlink and apply
-        let _ = try SymHandler.createAppSymlink(for: "\(appHash)/Library/Caches/MappedImageCache/com.apple.CarPlayApp.wallpaper-images")
         defer {
             SymHandler.cleanup()
         }
-        for imgURL in toRemove {
-            try FileManager.default.trashItem(at: imgURL, resultingItemURL: nil)
+        
+        let cacheRel = "\(appHash)/Library/Caches/MappedImageCache/com.apple.CarPlayApp.wallpaper-images"
+        if SymHandler.prefersBadQuery {
+            let destPath = BadQuery.carPlayCachePath(appHash: appHash)
+            do {
+                try SymHandler.writeFilesViaBadQuery(toDirectory: destPath, files: toRemove)
+                // remove local staging copies after successful write
+                for imgURL in toRemove {
+                    try? FileManager.default.removeItem(at: imgURL)
+                }
+            } catch {
+                print("bad_query CarPlay failed, falling back to symlink: \(error)")
+                let _ = try SymHandler.createAppSymlink(for: cacheRel)
+                for imgURL in toRemove {
+                    try FileManager.default.trashItem(at: imgURL, resultingItemURL: nil)
+                }
+            }
+        } else {
+            // legacy symlink + trashItem
+            let _ = try SymHandler.createAppSymlink(for: cacheRel)
+            for imgURL in toRemove {
+                try FileManager.default.trashItem(at: imgURL, resultingItemURL: nil)
+            }
         }
         UserDefaults.standard.set(activeWP, forKey: "ActiveCarPlayWallpapers")
         let test = SymHandler.getDocumentsDirectory().appendingPathComponent("Caches")

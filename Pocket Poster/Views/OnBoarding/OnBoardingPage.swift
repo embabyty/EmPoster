@@ -5,7 +5,7 @@
 //  Created by lemin on 5/31/25.
 //
 
-import SwiftUICore
+import SwiftUI
 
 struct OnBoardingPage: Identifiable {
     var id = UUID()

@@ -842,6 +842,9 @@
         }
       }
     },
+    "bad_query available — on-device detect works (no PC)." : {
+
+    },
     "Cancel" : {
       "localizations" : {
         "ar" : {
@@ -2600,6 +2603,12 @@
         }
       }
     },
+    "Detect On-Device" : {
+
+    },
+    "Detect via Nugget" : {
+
+    },
     "Disable Video Duration Limit" : {
       "localizations" : {
         "ar" : {
@@ -4090,6 +4099,7 @@
       }
     },
     "Exploit" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -4242,6 +4252,9 @@
           }
         }
       }
+    },
+    "Exploit (.Trash)" : {
+
     },
     "Explore" : {
       "localizations" : {
@@ -7306,6 +7319,9 @@
           }
         }
       }
+    },
+    "No hash set — will auto-detect via bad_query on Apply." : {
+
     },
     "Nugget GitHub" : {
       "localizations" : {

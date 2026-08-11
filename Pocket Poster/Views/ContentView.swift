@@ -58,10 +58,15 @@ struct ContentView: View {
                 }
                 
                 Section {
-                    if pbHash == "" {
+                    if pbHash == "" && !SymHandler.prefersBadQuery {
                         Text("Enter your PosterBoard app hash in Settings.")
                     } else {
                         VStack {
+                            if pbHash == "" && SymHandler.prefersBadQuery {
+                                Text("No hash set — will auto-detect via bad_query on Apply.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                             if !pbManager.selectedTendies.isEmpty || !pbManager.videos.isEmpty {
                                 Button(action: {
                                     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
@@ -69,21 +74,23 @@ struct ContentView: View {
 
                                     DispatchQueue.global(qos: .userInitiated).async {
                                         do {
-                                            try pbManager.applyTendies(appHash: pbHash)
+                                            var hash = pbHash
+                                            if hash.isEmpty {
+                                                UIApplication.shared.change(title: NSLocalizedString("Applying Wallpapers...", comment: ""), body: "Detecting PosterBoard container…")
+                                                hash = try BadQuery.findPosterBoardHash()
+                                                DispatchQueue.main.async { pbHash = hash }
+                                            }
+                                            try pbManager.applyTendies(appHash: hash)
                                             SymHandler.cleanup() // just to be extra sure
                                             try? FileManager.default.removeItem(at: pbManager.getTendiesStoreURL())
-                                            UIApplication.shared.dismissAlert(animated: false)
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: {
+                                            
+                                            DispatchQueue.main.async {
                                                 pbManager.selectedTendies.removeAll()
+                                                pbManager.videos.removeAll()
                                                 Haptic.shared.notify(.success)
-                                                UIApplication.shared.confirmAlert(title: NSLocalizedString("Success!", comment: ""), body: NSLocalizedString("The PosterBoard app will now open. Please close it from the app switcher.", comment: ""), onOK: {
-                                                    if !pbManager.openPosterBoard() {
-                                                        UIApplication.shared.confirmAlert(title: NSLocalizedString("Falling Back to Shortcut", comment: ""), body: NSLocalizedString("PosterBoard failed to open directly. The fallback shortcut will now be opened.", comment: ""), onOK: {
-                                                            pbManager.runShortcut(named: "PosterBoard")
-                                                        }, noCancel: true)
-                                                    }
-                                                }, noCancel: true)
-                                            })
+                                                // Instant Mond-style respring (no alert delay)
+                                                RespringHelper.respring()
+                                            }
                                         } catch CocoaError.fileWriteUnknown {
                                             presentError(ApplyError.wrongAppHash)
                                         } catch CocoaError.fileWriteFileExists {
@@ -99,21 +106,41 @@ struct ContentView: View {
                                 .buttonStyle(TintedButton(color: .blue, fullwidth: true))
                             }
                             Button(action: {
-                                if #available(iOS 18.0, *) {
-                                    guard let lang = UserDefaults.standard.stringArray(forKey: "AppleLanguages")?.first else {
-                                        hideResetHelp = false // fallback to tutorial
-                                        return
-                                    }
-                                    UIApplication.shared.confirmAlert(title: NSLocalizedString("Reset Collections", comment: ""), body: NSLocalizedString("Do you want to reset collections?", comment: ""), onOK: {
-                                        if pbManager.setSystemLanguage(to: lang) {
-                                            UIApplication.shared.alert(title: NSLocalizedString("Collections Successfully Reset!", comment: ""), body: NSLocalizedString("Your PosterBoard will refresh automatically.", comment: ""))
-                                        } else {
-                                            UIApplication.shared.alert(body: "The API failed to call correctly.\nSystem Locale Code: \(lang)")
+                                UIApplication.shared.confirmAlert(
+                                    title: NSLocalizedString("Reset Collections", comment: ""),
+                                    body: SymHandler.prefersBadQuery
+                                        ? "This will wipe custom PosterBoard descriptors via bad_query, then respring."
+                                        : NSLocalizedString("Do you want to reset collections?", comment: ""),
+                                    onOK: {
+                                        UIApplication.shared.alert(
+                                            title: "Resetting…",
+                                            body: "Please wait",
+                                            animated: true,
+                                            withButton: false
+                                        )
+                                        DispatchQueue.global(qos: .userInitiated).async {
+                                            do {
+                                                var hash = pbHash
+                                                if hash.isEmpty && SymHandler.prefersBadQuery {
+                                                    hash = try BadQuery.findPosterBoardHash()
+                                                    DispatchQueue.main.async { pbHash = hash }
+                                                }
+                                                guard !hash.isEmpty else {
+                                                    throw ApplyError.wrongAppHash
+                                                }
+                                                try pbManager.resetCollections(appHash: hash)
+                                                DispatchQueue.main.async {
+                                                    Haptic.shared.notify(.success)
+                                                    // Instant Mond-style respring
+                                                    RespringHelper.respring()
+                                                }
+                                            } catch {
+                                                presentError(ApplyError.unexpected(info: error.localizedDescription))
+                                            }
                                         }
-                                    }, noCancel: false)
-                                } else {
-                                    hideResetHelp = false
-                                }
+                                    },
+                                    noCancel: false
+                                )
                             }) {
                                 Label("Reset Collections", systemImage: "arrow.clockwise.circle")
                             }
@@ -171,11 +198,11 @@ struct ContentView: View {
     
     func presentError(_ error: ApplyError) {
         SymHandler.cleanup()
-        UIApplication.shared.dismissAlert(animated: false)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: {
+        DispatchQueue.main.async {
             Haptic.shared.notify(.error)
-            UIApplication.shared.alert(body: error.localizedDescription)
-        })
+            // alert() dismisses any buttonless progress sheet first, always with OK
+            UIApplication.shared.alert(body: error.localizedDescription, withButton: true)
+        }
     }
     
     init() {

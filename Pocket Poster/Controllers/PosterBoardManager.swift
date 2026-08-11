@@ -30,12 +30,16 @@ class PosterBoardManager: ObservableObject {
     }
     
     func setSystemLanguage(to new_lang: String) -> Bool {
+        // Load Preferences private frameworks if needed
+        dlopen("/System/Library/PrivateFrameworks/SettingsFoundation.framework/SettingsFoundation", RTLD_NOW)
+        dlopen("/System/Library/PrivateFrameworks/Preferences.framework/Preferences", RTLD_NOW)
+        dlopen("/System/Library/PrivateFrameworks/InternationalSupport.framework/InternationalSupport", RTLD_NOW)
+        
         var langManager: NSObject = NSObject()
         if #available(iOS 18.0, *) {
             guard let obj = objc_getClass("IPSettingsUtilities") as? NSObject else { return false }
             langManager = obj
         } else {
-            // TODO: Need to find the correct class for this on iOS 17
             guard let obj = objc_getClass("PSLanguageSelector") as? NSObject else { return false }
             langManager = obj
         }
@@ -45,6 +49,63 @@ class PosterBoardManager: ObservableObject {
         }
         
         return false
+    }
+    
+    /// Wipe PosterBoard custom descriptor collections using bad_query (real delete).
+    /// Falls back to language-toggle trick on older exploit path.
+    func resetCollections(appHash: String) throws {
+        if SymHandler.prefersBadQuery {
+            try wipeDescriptorsViaBadQuery(appHash: appHash)
+            return
+        }
+        
+        // Legacy: language toggle forces PosterBoard to rebuild collections
+        guard let lang = UserDefaults.standard.stringArray(forKey: "AppleLanguages")?.first else {
+            throw ApplyError.unexpected(info: "Could not read system language for reset.")
+        }
+        guard setSystemLanguage(to: lang) else {
+            throw ApplyError.unexpected(info: "Language API failed. Reset collections manually in Settings → Language & Region.")
+        }
+    }
+    
+    /// Delete everything under each PRBPosterExtensionDataStore/*/Extensions/*/descriptors.
+    private func wipeDescriptorsViaBadQuery(appHash: String) throws {
+        let ver = SymHandler.getExtensionVersion()
+        let extensionsRoot = BadQuery.applicationContainerPath(appHash: appHash)
+            + "/Library/Application Support/PRBPosterExtensionDataStore/\(ver)/Extensions"
+        
+        // Open parent with sandbox extension
+        let rootHandle = try BadQuery.consume(path: extensionsRoot, create: true)
+        defer { rootHandle.release() }
+        
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: extensionsRoot) else {
+            // Nothing to wipe — treat as success (collections already empty / never set up)
+            return
+        }
+        
+        let extDirs = try fm.contentsOfDirectory(atPath: extensionsRoot)
+        var wiped = 0
+        for extName in extDirs {
+            let descriptorsPath = (extensionsRoot as NSString)
+                .appendingPathComponent(extName)
+                .appending("/descriptors")
+            
+            // Ensure we hold an extension on the descriptors dir itself
+            let descHandle = try? BadQuery.consume(path: descriptorsPath, create: true)
+            defer { descHandle?.release() }
+            
+            guard fm.fileExists(atPath: descriptorsPath) else { continue }
+            
+            let items = (try? fm.contentsOfDirectory(atPath: descriptorsPath)) ?? []
+            for item in items {
+                if item == "__MACOSX" || item.hasPrefix(".") { continue }
+                let full = (descriptorsPath as NSString).appendingPathComponent(item)
+                try? fm.removeItem(atPath: full)
+                wiped += 1
+            }
+        }
+        print("resetCollections: wiped \(wiped) descriptor item(s)")
     }
     
     func openPosterBoard() -> Bool {
@@ -70,7 +131,6 @@ class PosterBoardManager: ObservableObject {
         if !FileManager.default.fileExists(atPath: path.path()) {
             try? FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
         }
-        let url = path.appending(path: fileName)
 
         // Remove All files in this directory
         let existingFiles = try FileManager.default.contentsOfDirectory(at: path, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
@@ -78,17 +138,17 @@ class PosterBoardManager: ObservableObject {
         {
             try FileManager.default.removeItem(at: fileUrl)
         }
-        let url = path.appending(path: normalizedFileName)
+        let zipURL = path.appending(path: normalizedFileName)
 
         // Save our Zip file
-        try fileData.write(to: url, options: [.atomic])
+        try fileData.write(to: zipURL, options: [.atomic])
 
         // Unzip the Zipped Up File
         var destinationURL = path
-        if FileManager.default.fileExists(atPath: url.path())
+        if FileManager.default.fileExists(atPath: zipURL.path())
         {
             destinationURL.append(path: "directory")
-            try fileManager.unzipItem(at: url, to: destinationURL)
+            try fileManager.unzipItem(at: zipURL, to: destinationURL)
         }
 
         return destinationURL
@@ -213,19 +273,33 @@ class PosterBoardManager: ObservableObject {
             SymHandler.cleanup()
         }
         
+        let useBadQuery = SymHandler.prefersBadQuery
+        if useBadQuery {
+            UIApplication.shared.change(title: NSLocalizedString("Applying Wallpapers...", comment: ""), body: "bad_query sandbox escape…")
+        }
+        
         for (ext, descriptorsList) in extList {
-            let _ = try SymHandler.createDescriptorsSymlink(appHash: appHash, ext: ext)
+            var foldersToWrite: [URL] = []
             for descriptors in descriptorsList {
-                // create the folder
                 for descr in try FileManager.default.contentsOfDirectory(at: descriptors, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) {
                     if descr.lastPathComponent != "__MACOSX" {
                         try randomizeWallpaperId(url: descr)
-                        let newURL = SymHandler.getDocumentsDirectory().appendingPathComponent(UUID().uuidString, conformingTo: .directory)
-                        try FileManager.default.moveItem(at: descr, to: newURL)
-                        
-                        try FileManager.default.trashItem(at: newURL, resultingItemURL: nil)
+                        foldersToWrite.append(descr)
                     }
                 }
+            }
+            
+            if useBadQuery {
+                // iOS 26/27: direct write via container_query sandbox extension
+                do {
+                    try SymHandler.writeDescriptorsViaBadQuery(appHash: appHash, ext: ext, descriptorFolders: foldersToWrite)
+                } catch {
+                    // Fall back to legacy .Trash symlink if bad_query path fails
+                    print("bad_query apply failed, falling back to symlink: \(error)")
+                    try applyDescriptorsViaSymlink(appHash: appHash, ext: ext, folders: foldersToWrite)
+                }
+            } else {
+                try applyDescriptorsViaSymlink(appHash: appHash, ext: ext, folders: foldersToWrite)
             }
             SymHandler.cleanup()
         }
@@ -235,6 +309,16 @@ class PosterBoardManager: ObservableObject {
             try? FileManager.default.removeItem(at: SymHandler.getDocumentsDirectory().appendingPathComponent("UnzipItems", conformingTo: .directory))
             try? FileManager.default.removeItem(at: SymHandler.getDocumentsDirectory().appendingPathComponent(url.lastPathComponent))
             try? FileManager.default.removeItem(at: SymHandler.getDocumentsDirectory().appendingPathComponent(url.deletingPathExtension().lastPathComponent))
+        }
+    }
+    
+    /// Legacy exploit: symlink Documents/.Trash → descriptors, then trashItem into it.
+    private func applyDescriptorsViaSymlink(appHash: String, ext: String, folders: [URL]) throws {
+        let _ = try SymHandler.createDescriptorsSymlink(appHash: appHash, ext: ext)
+        for descr in folders {
+            let newURL = SymHandler.getDocumentsDirectory().appendingPathComponent(UUID().uuidString, conformingTo: .directory)
+            try FileManager.default.copyItem(at: descr, to: newURL)
+            try FileManager.default.trashItem(at: newURL, resultingItemURL: nil)
         }
     }
     

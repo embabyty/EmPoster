@@ -15,11 +15,12 @@ struct SettingsView: View {
     
     @State var checkingForHash: Bool = false
     @State var hashCheckTask: Task<Void, any Error>? = nil
+    @State var detectingOnDevice: Bool = false
     
     var body: some View {
         List {
             Section {
-                VStack {
+                VStack(alignment: .leading, spacing: 10) {
                     TextField("Enter PosterBoard App Hash", text: $pbHash)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .font(.system(.body, design: .monospaced))
@@ -28,8 +29,30 @@ struct SettingsView: View {
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .font(.system(.body, design: .monospaced))
                     }
+                    
+                    if SymHandler.prefersBadQuery {
+                        Text("bad_query available — on-device detect works (no PC).")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
                     HStack {
                         Spacer()
+                        // On-device detect via bad_query (iOS 26/27)
+                        if SymHandler.prefersBadQuery {
+                            Button(action: {
+                                detectOnDevice()
+                            }) {
+                                if detectingOnDevice {
+                                    ProgressView()
+                                } else {
+                                    Text("Detect On-Device")
+                                }
+                            }
+                            .foregroundStyle(.blue)
+                            .disabled(detectingOnDevice)
+                        }
+                        
                         // Run task to check until file exists from Nugget pc over AFC
                         Button(action: {
                             if !FileManager.default.fileExists(atPath: SymHandler.getPosterBoardHashURL().path()) {
@@ -40,7 +63,7 @@ struct SettingsView: View {
                             }
                             startWaitForHash()
                         }) {
-                            Text("Detect")
+                            Text(SymHandler.prefersBadQuery ? "Detect via Nugget" : "Detect")
                         }
                         .foregroundStyle(.green)
                         .onChange(of: checkingForHash) { _ in
@@ -138,14 +161,69 @@ struct SettingsView: View {
             
             // MARK: Credits
             Section {
+                LinkCell(imageName: "Mak5er", url: "https://github.com/Mak5er", title: "Mak5er", contribution: "bad_query port · iOS 27 build", circle: true)
                 LinkCell(imageName: "leminlimez", url: "https://github.com/leminlimez", title: "LeminLimez", contribution: NSLocalizedString("Main Developer", comment: "leminlimez's contribution"), circle: true)
                 LinkCell(imageName: "serstars", url: "https://github.com/SerStars", title: "SerStars", contribution: NSLocalizedString("Website Designer", comment: ""), circle: true)
-                LinkCell(imageName: "Nathan", url: "https://github.com/verygenericname", title: "Nathan", contribution: NSLocalizedString("Exploit", comment: ""), circle: true)
-                LinkCell(imageName: "duy", url: "https://github.com/khanhduytran0", title: "DuyKhanhTran", contribution: NSLocalizedString("Exploit", comment: ""), circle: true)
+                LinkCell(imageName: "Nathan", url: "https://github.com/verygenericname", title: "Nathan", contribution: NSLocalizedString("Exploit (.Trash)", comment: ""), circle: true)
+                LinkCell(imageName: "duy", url: "https://github.com/khanhduytran0", title: "DuyKhanhTran", contribution: NSLocalizedString("Exploit (.Trash)", comment: ""), circle: true)
+                LinkCell(imageName: "sky", url: "https://github.com/forcequitOS/bad_query", title: "forcequitOS", contribution: "bad_query (iOS 26/27)", circle: false)
                 LinkCell(imageName: "sky", url: "https://bsky.app/profile/did:plc:xykfeb7ieeo335g3aly6vev4", title: "dootskyre", contribution: NSLocalizedString("Fallback Shortcut Creator", comment: ""), circle: true)
                 LinkCell(imageName: "POEditor", url: "https://poeditor.com/join/project/MPZOsunwVj", title: NSLocalizedString("Community Translators", comment: ""), contribution: "POEditor")
             } header: {
                 Label("Credits", systemImage: "wrench.and.screwdriver")
+            }
+        }
+    }
+    
+    /// Scan containers on-device with bad_query / fsgetpath — no computer needed.
+    func detectOnDevice() {
+        detectingOnDevice = true
+        UIApplication.shared.alert(
+            title: "Scanning containers…",
+            body: "Looking for PosterBoard via bad_query. This may take a moment.",
+            animated: true,
+            withButton: false
+        )
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            var pb: String?
+            var cp: String?
+            var errMsg: String?
+            
+            do {
+                pb = try BadQuery.findPosterBoardHash()
+            } catch {
+                errMsg = error.localizedDescription
+            }
+            
+            if CarPlayManager.supportsCarPlay() {
+                cp = try? BadQuery.findCarPlayHash()
+            }
+            
+            // Always show a closeable result alert (loading alert has no OK button —
+            // dismiss must complete before the next alert is presented).
+            DispatchQueue.main.async {
+                detectingOnDevice = false
+                
+                if let pb {
+                    pbHash = pb.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if let cp {
+                        cpHash = cp.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                    Haptic.shared.notify(.success)
+                    let body = cp != nil
+                        ? "PosterBoard:\n\(pbHash)\n\nCarPlay:\n\(cpHash)"
+                        : "PosterBoard:\n\(pbHash)"
+                    // alert() auto-dismisses any previous (buttonless) sheet first
+                    UIApplication.shared.alert(title: "Hash found!", body: body, withButton: true)
+                } else {
+                    Haptic.shared.notify(.error)
+                    UIApplication.shared.alert(
+                        title: "Detect failed",
+                        body: errMsg ?? "Could not find PosterBoard container. Open Wallpaper settings once, then retry.",
+                        withButton: true
+                    )
+                }
             }
         }
     }
