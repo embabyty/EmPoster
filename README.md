@@ -6,9 +6,6 @@
   <h1><b>Pocket Poster</b></h1>
   <p><i>Custom PosterBoard Wallpapers for iOS 17+ · bad_query for iOS 26–27.0b4</i></p>
   <p>Maintained / iOS 27 port by <a href="https://github.com/Mak5er"><b>Mak5er</b></a></p>
-  <a href="https://celloserenity.github.io/altdirect/?url=https://raw.githubusercontent.com/SerStars/Nugget-Wallpapers/refs/heads/main/other/pocketposter_source.json" target="_blank">
-   <img src="https://raw.githubusercontent.com/CelloSerenity/altdirect/refs/heads/main/assets/png/AltSource_White.png" width="150">
-  </a>
 </div>
 
 ## Download
