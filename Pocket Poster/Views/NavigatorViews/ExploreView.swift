@@ -13,6 +13,7 @@ let CORNER_RADIUS: CGFloat = 12
 
 struct ExploreView: View {
     @ObservedObject var cowabungaAPI = CowabungaAPI.shared
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     
     // lazyvgrid
     @State private var gridItemLayout = [GridItem(.adaptive(minimum: MIN_SIZE))]
@@ -23,6 +24,8 @@ struct ExploreView: View {
     
     @State var filterType: FilterType = .random
     @State var searchTerm: String = ""
+    
+    @State private var showSubscriptionSheet = false
     
     var body: some View {
         NavigationView {
@@ -53,7 +56,13 @@ struct ExploreView: View {
                         ForEach(wallpapers) { wallpaper in
                             if searchTerm == "" || wallpaper.name.lowercased().contains(searchTerm.lowercased()) || (wallpaper.authors ?? "").lowercased().contains(searchTerm.lowercased()) {
                                 Button(action: {
-                                    DownloadManager.shared.startTendiesDownload(for: cowabungaAPI.getDownloadURLForWallpaper(wallpaper: wallpaper))
+                                    if wallpaper.pro == true && !subscriptionManager.isPro {
+                                        // Pro-only wallpaper — prompt to subscribe instead.
+                                        Haptic.shared.play(.light)
+                                        showSubscriptionSheet = true
+                                    } else {
+                                        DownloadManager.shared.startTendiesDownload(for: cowabungaAPI.getDownloadURLForWallpaper(wallpaper: wallpaper))
+                                    }
                                 }) {
                                     VStack(spacing: 0) {
                                         ZStack {
@@ -72,6 +81,17 @@ struct ExploreView: View {
                                                     Color.gray
                                                         .frame(height: MIN_SIZE)
                                                 }
+                                            }
+
+                                            // Yellow crown badge for Pro-only wallpapers.
+                                            if wallpaper.pro == true {
+                                                Image(systemName: "crown.fill")
+                                                    .font(.subheadline)
+                                                    .foregroundStyle(.yellow)
+                                                    .padding(6)
+                                                    .background(Circle().fill(Color.black.opacity(0.35)))
+                                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                                                    .padding(6)
                                             }
                                         }
                                         .cornerRadius(CORNER_RADIUS, corners: .topLeft)
@@ -96,8 +116,13 @@ struct ExploreView: View {
                                             }
                                             .lineLimit(1)
                                             Spacer()
-                                            Image(systemName: "arrow.down.circle")
-                                                .foregroundColor(.blue)
+                                            if wallpaper.pro == true && !subscriptionManager.isPro {
+                                                Image(systemName: "lock.fill")
+                                                    .foregroundColor(.yellow)
+                                            } else {
+                                                Image(systemName: "arrow.down.circle")
+                                                    .foregroundColor(.blue)
+                                            }
                                         }
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 8)
@@ -129,6 +154,9 @@ struct ExploreView: View {
         }
         .onAppear {
             loadWallpapers()
+        }
+        .sheet(isPresented: $showSubscriptionSheet) {
+            SubscriptionView()
         }
         .onChange(of: wallpaperTypeSelected) { newValue in
             let map = [0: DownloadableWallpaper.WallpaperType.custom, 1: .apple, 2: .template]

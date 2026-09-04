@@ -12,6 +12,9 @@ class DownloadableWallpaper: Identifiable, Codable {
     var preview: String
     var authors: String?
     var type: WallpaperType?
+    /// Whether this wallpaper is exclusive to Pro (or Ultra) subscribers.
+    /// Set to `true` in the wallpapers JSON to gate it behind the paywall.
+    var pro: Bool?
 
     init(name: String, description: String?, authors: String?, preview: String, url: String, version: String) {
         self.name = name

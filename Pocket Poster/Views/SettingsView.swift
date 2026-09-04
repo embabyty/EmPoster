@@ -52,7 +52,7 @@ struct SettingsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Unlock Pocket Poster Pro")
                                     .font(.headline)
-                                Text("Disable the video duration limit and support the app.")
+                                Text("Disable the video duration limit, unlock Pro wallpapers, and support the app.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

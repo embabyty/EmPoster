@@ -5,28 +5,12 @@
   ],
   "products" : [
     {
-      "displayPrice" : "0.99",
-      "familyShareable" : false,
-      "internalID" : "E6FC75FC-1F7A-4ED5-8077-9AC1473F1EC9",
-      "localizations" : [
-        {
-          "description" : "Unlock Pocket Poster Pro for one week of testing.",
-          "displayName" : "Pocket Poster Pro (Weekly)",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "com.mak5er.Pocket-Poster.pro.weekly",
-      "referenceName" : "Weekly",
-      "type" : "AutoRenewableSubscription",
-      "subscriptionGroupID" : "D5F3A1C2"
-    },
-    {
-      "displayPrice" : "1.99",
+      "displayPrice" : "2.99",
       "familyShareable" : false,
       "internalID" : "61C5C9EC-57A7-43AE-A33D-0AEC76B820CA",
       "localizations" : [
         {
-          "description" : "Unlock Pocket Poster Pro for one month of testing.",
+          "description" : "Unlock Pocket Poster Pro for one month.",
           "displayName" : "Pocket Poster Pro (Monthly)",
           "locale" : "en_US"
         }
@@ -42,13 +26,45 @@
       "internalID" : "F3862C1F-48A1-40DD-AA33-DA4B06A47DCB",
       "localizations" : [
         {
-          "description" : "Unlock Pocket Poster Pro for one year of testing.",
+          "description" : "Unlock Pocket Poster Pro for one year.",
           "displayName" : "Pocket Poster Pro (Yearly)",
           "locale" : "en_US"
         }
       ],
       "productID" : "com.mak5er.Pocket-Poster.pro.yearly",
       "referenceName" : "Yearly",
+      "type" : "AutoRenewableSubscription",
+      "subscriptionGroupID" : "D5F3A1C2"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "07BAEE2D-5379-4B6F-8542-EF7EED7ED14F",
+      "localizations" : [
+        {
+          "description" : "Unlock Pocket Poster Ultra for one month.",
+          "displayName" : "Pocket Poster Ultra (Monthly)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.mak5er.Pocket-Poster.ultra.monthly",
+      "referenceName" : "Ultra Monthly",
+      "type" : "AutoRenewableSubscription",
+      "subscriptionGroupID" : "D5F3A1C2"
+    },
+    {
+      "displayPrice" : "15.99",
+      "familyShareable" : false,
+      "internalID" : "27C14DE1-C39C-4EE0-983C-D7256E1553FE",
+      "localizations" : [
+        {
+          "description" : "Unlock Pocket Poster Ultra for one year.",
+          "displayName" : "Pocket Poster Ultra (Yearly)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.mak5er.Pocket-Poster.ultra.yearly",
+      "referenceName" : "Ultra Yearly",
       "type" : "AutoRenewableSubscription",
       "subscriptionGroupID" : "D5F3A1C2"
     }
@@ -67,7 +83,7 @@
       "localizations" : [
 
       ],
-      "name" : "Pocket Poster Pro",
+      "name" : "Pocket Poster",
       "subscriptions" : [
         {
           "adHocOffers" : [
@@ -76,43 +92,16 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "0.99",
+          "displayPrice" : "2.99",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "E6FC75FC-1F7A-4ED5-8077-9AC1473F1EC9",
-          "introductoryOffer" : {
-
-          },
-          "localizations" : [
-            {
-              "description" : "Unlock Pocket Poster Pro for one week of testing.",
-              "displayName" : "Pocket Poster Pro (Weekly)",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "com.mak5er.Pocket-Poster.pro.weekly",
-          "recurringSubscriptionPeriod" : "P1W",
-          "referenceName" : "Weekly",
-          "subscriptionGroupID" : "D5F3A1C2",
-          "type" : "AutoRenewableSubscription"
-        },
-        {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "1.99",
-          "familyShareable" : false,
-          "groupNumber" : 2,
           "internalID" : "61C5C9EC-57A7-43AE-A33D-0AEC76B820CA",
           "introductoryOffer" : {
 
           },
           "localizations" : [
             {
-              "description" : "Unlock Pocket Poster Pro for one month of testing.",
+              "description" : "Unlock Pocket Poster Pro for one month.",
               "displayName" : "Pocket Poster Pro (Monthly)",
               "locale" : "en_US"
             }
@@ -132,14 +121,14 @@
           ],
           "displayPrice" : "9.99",
           "familyShareable" : false,
-          "groupNumber" : 3,
+          "groupNumber" : 2,
           "internalID" : "F3862C1F-48A1-40DD-AA33-DA4B06A47DCB",
           "introductoryOffer" : {
 
           },
           "localizations" : [
             {
-              "description" : "Unlock Pocket Poster Pro for one year of testing.",
+              "description" : "Unlock Pocket Poster Pro for one year.",
               "displayName" : "Pocket Poster Pro (Yearly)",
               "locale" : "en_US"
             }
@@ -147,6 +136,60 @@
           "productID" : "com.mak5er.Pocket-Poster.pro.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Yearly",
+          "subscriptionGroupID" : "D5F3A1C2",
+          "type" : "AutoRenewableSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 3,
+          "internalID" : "07BAEE2D-5379-4B6F-8542-EF7EED7ED14F",
+          "introductoryOffer" : {
+
+          },
+          "localizations" : [
+            {
+              "description" : "Unlock Pocket Poster Ultra for one month.",
+              "displayName" : "Pocket Poster Ultra (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mak5er.Pocket-Poster.ultra.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Ultra Monthly",
+          "subscriptionGroupID" : "D5F3A1C2",
+          "type" : "AutoRenewableSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "15.99",
+          "familyShareable" : false,
+          "groupNumber" : 4,
+          "internalID" : "27C14DE1-C39C-4EE0-983C-D7256E1553FE",
+          "introductoryOffer" : {
+
+          },
+          "localizations" : [
+            {
+              "description" : "Unlock Pocket Poster Ultra for one year.",
+              "displayName" : "Pocket Poster Ultra (Yearly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mak5er.Pocket-Poster.ultra.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Ultra Yearly",
           "subscriptionGroupID" : "D5F3A1C2",
           "type" : "AutoRenewableSubscription"
         }
