@@ -27,12 +27,22 @@ struct SubscriptionView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if patreon.isPro || patreon.isDeviceAuthorized {
-                    content
-                } else {
-                    ownerLogin
+            ScrollView {
+                VStack(spacing: 24) {
+                    header
+
+                    if patreon.isPro {
+                        activeCard
+                    }
+
+                    featuresCard
+
+                    patreonButtons
+
+                    termsText
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 24)
             }
             .navigationTitle("EmPoster Pro")
             .navigationBarTitleDisplayMode(.inline)
@@ -50,71 +60,6 @@ struct SubscriptionView: View {
                 Text(patreon.lastError ?? "")
             }
         }
-    }
-
-    // MARK: - Content (authorized device only)
-
-    private var content: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                header
-
-                if patreon.isPro {
-                    activeCard
-                }
-
-                featuresCard
-
-                patreonButtons
-
-                termsText
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 24)
-        }
-    }
-
-    // MARK: - Owner Login
-
-    private var ownerLogin: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "person.badge.key.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.blue)
-                .padding(.bottom, 4)
-
-            Text("EmPoster Pro is reserved for the app owner.")
-                .font(.headline)
-                .multilineTextAlignment(.center)
-
-            Text("Sign in with the owner's Patreon account to unlock Pro on this device.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            Button(action: {
-                patreon.login()
-            }) {
-                HStack(spacing: 8) {
-                    if patreon.isAuthenticating {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Image(systemName: "person.badge.key")
-                        Text("Login with Patreon")
-                            .fontWeight(.semibold)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .foregroundStyle(.white)
-                .background(Capsule().fill(Color.blue))
-            }
-            .buttonStyle(.plain)
-            .disabled(patreon.isAuthenticating)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
     }
 
     // MARK: - Header

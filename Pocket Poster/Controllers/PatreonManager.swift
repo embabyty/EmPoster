@@ -3,31 +3,28 @@
 //  EmPoster
 //
 //  Patreon-based Pro entitlement (replaces StoreKit subscriptions).
-//  The Patreon profile / OAuth app is not live yet — fill in PatreonConfig
-//  once it exists. Everything is already wired up.
+//  Only the app owner's Patreon account (ios11emiry@gmail.com) unlocks Pro.
 //
 
 import Foundation
 import UIKit
 
 enum PatreonConfig {
-    // TODO: Replace with your real values once the Patreon profile is live.
+    // TODO: Fill in the OAuth client credentials once the Patreon app exists.
 
-    /// Your Patreon creator page, e.g. https://www.patreon.com/YourName
-    static let profileURL = URL(string: "https://www.patreon.com/")!
+    /// The app owner's Patreon page.
+    static let profileURL = URL(string: "https://www.patreon.com/c/EmAppleFlagship")!
 
-    /// The app owner's Patreon account email. Logging in with this account
-    /// unlocks EmPoster Pro on any device (serial gate covers the owner's
-    /// phone separately when the serial is readable).
+    /// Only this Patreon account email can unlock EmPoster Pro.
     static let ownerEmail = "ios11emiry@gmail.com"
 
     /// Patreon OAuth client ID (Patreon → My page → Apps & Webhooks → Create client).
     /// Leave empty to show "coming soon" instead of a broken OAuth flow.
     static let clientID = ""
 
-    /// Patreon OAuth client secret, embedded on purpose for this personal
-    /// sideloaded app. Anyone can see it in the repo, but only the owner's
-    /// Patreon account can actually unlock Pro. Rotate it if it leaks.
+    /// Patreon OAuth client secret. Embedded on purpose for this personal
+    /// sideloaded app — anyone can read it, but only the owner's Patreon
+    /// account can actually unlock Pro. Rotate it if it leaks.
     static let clientSecret = ""
 
     /// Patreon campaign ID (for verifying pledges via the API).
@@ -48,7 +45,7 @@ final class PatreonManager: ObservableObject {
 
     // MARK: - Published State
 
-    /// Whether the user currently has Pro (Patreon patron active or logged in).
+    /// Whether the user currently has Pro (owner's Patreon account logged in).
     @Published private(set) var isPro: Bool {
         didSet { UserDefaults.standard.set(isPro, forKey: UserDefaultsKey.isPro) }
     }
@@ -61,13 +58,13 @@ final class PatreonManager: ObservableObject {
         didSet { UserDefaults.standard.set(memberName, forKey: UserDefaultsKey.memberName) }
     }
 
-    @Published private(set) var tier: String? {
-        didSet { UserDefaults.standard.set(tier, forKey: UserDefaultsKey.tier) }
-    }
-
     /// Email of the logged-in Patreon account (used for the owner check).
     @Published private(set) var memberEmail: String? {
         didSet { UserDefaults.standard.set(memberEmail, forKey: UserDefaultsKey.memberEmail) }
+    }
+
+    @Published private(set) var tier: String? {
+        didSet { UserDefaults.standard.set(tier, forKey: UserDefaultsKey.tier) }
     }
 
     /// Last Patreon error, if any (cleared after being shown).
@@ -75,26 +72,6 @@ final class PatreonManager: ObservableObject {
 
     /// True while an OAuth request is in flight.
     @Published private(set) var isAuthenticating = false
-
-    /// Whether this install is running on the owner's iPhone (serial-gated).
-    /// All Pro features and the subscription UI depend on this.
-    @Published private(set) var isDeviceAuthorized = false
-
-    /// True once the device authorization check has run for this launch.
-    private var didEvaluateDevice = false
-
-    // MARK: - Access
-
-    /// Whether the logged-in Patreon account is the app owner's.
-    var isOwnerAccount: Bool {
-        guard let email = memberEmail else { return false }
-        return email.lowercased() == PatreonConfig.ownerEmail.lowercased()
-    }
-
-    /// Whether Pro is unlocked: owner's Patreon account, or the owner's device.
-    var canAccessPro: Bool {
-        isOwnerAccount || isDeviceAuthorized
-    }
 
     // MARK: - Private
 
@@ -114,53 +91,15 @@ final class PatreonManager: ObservableObject {
         tier = UserDefaults.standard.string(forKey: UserDefaultsKey.tier)
     }
 
-    /// True once a client ID has been configured.
+    /// True once a client ID and secret have been configured.
     var isConfigured: Bool {
         !PatreonConfig.clientID.isEmpty && !PatreonConfig.clientSecret.isEmpty
-    }
-
-    // MARK: - Device Authorization
-
-    /// Runs the serial-number device check once per launch. If the device is
-    /// not the owner's iPhone, Pro is revoked and stays unavailable.
-    func evaluateAuthorizedDevice() {
-        guard !didEvaluateDevice else { return }
-        didEvaluateDevice = true
-
-        Task {
-            let authorized = await Task.detached(priority: .userInitiated) {
-                DeviceGate.isAuthorizedDevice
-            }.value
-
-            isDeviceAuthorized = authorized
-            // Only force Pro off when the device is unknown AND no owner
-            // Patreon account is logged in (owner unlock survives relaunch).
-            if !authorized && !isOwnerAccount {
-                isPro = false
-                isLoggedIn = false
-            }
-        }
-    }
-
-    /// Blocks non-authorized devices with a friendly alert.
-    /// Returns `true` when the device may continue.
-    @discardableResult
-    private func ensureDeviceAuthorized() -> Bool {
-        guard isDeviceAuthorized else {
-            UIApplication.shared.alert(
-                title: "Not Available",
-                body: "EmPoster Pro is only available on the owner's device."
-            )
-            return false
-        }
-        return true
     }
 
     // MARK: - Subscribe
 
     /// Opens the Patreon creator page. Shows a "coming soon" alert until configured.
     func subscribe() {
-        guard ensureDeviceAuthorized() else { return }
         guard isConfigured else {
             UIApplication.shared.alert(
                 title: "Coming Soon",
@@ -174,7 +113,6 @@ final class PatreonManager: ObservableObject {
     // MARK: - Login / Logout
 
     /// Starts the Patreon OAuth flow in the browser.
-    /// Available on every device so the owner can sign in anywhere.
     func login() {
         guard isConfigured else {
             UIApplication.shared.alert(

@@ -30,9 +30,6 @@ struct EmPosterApp: App {
             .transition(.opacity)
             .animation(.easeOut(duration: 0.5), value: finishedTutorial)
             .onAppear {
-                // Device authorization (serial gate) — must run before Pro UI.
-                PatreonManager.shared.evaluateAuthorizedDevice()
-
                 // check for update
                 if !checkedForUpdate {
                     checkedForUpdate = true
