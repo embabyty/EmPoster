@@ -30,8 +30,12 @@ enum PatreonConfig {
     /// Patreon campaign ID (for verifying pledges via the API).
     static let campaignID = ""
 
-    /// Must match a registered URL scheme; the app already registers `pocketposter`.
-    static let redirectURI = "pocketposter://patreon"
+    /// Patreon redirect URI. Must match exactly what is registered in the
+    /// Patreon OAuth app, and the callback URL passed during login.
+    /// Patreon only accepts http(s):// URIs, so this lands on a GitHub Pages
+    /// bounce page (docs/patreon-callback.html) that forwards the code back
+    /// into the app through the `pocketposter://` URL scheme.
+    static let redirectURI = "https://embabyty.github.io/EmPoster/patreon-callback.html"
 
     /// Optional: if you host a tiny backend that exchanges the OAuth code for
     /// a token (keeps the client secret server-side), set this to its endpoint.
