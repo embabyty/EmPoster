@@ -14,6 +14,7 @@
 
 /* Begin PBXFileReference section */
 		6F09B79D2DEB694B00CDE89C /* Pocket Poster.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Pocket Poster.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F45132378FFD4992BDE0BBA6 /* PocketPoster.storekit */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = PocketPoster.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -61,6 +62,7 @@
 			children = (
 				6F09B79F2DEB694B00CDE89C /* Pocket Poster */,
 				6F09B79E2DEB694B00CDE89C /* Products */,
+				F45132378FFD4992BDE0BBA6 /* PocketPoster.storekit */,
 			);
 			sourceTree = "<group>";
 		};
