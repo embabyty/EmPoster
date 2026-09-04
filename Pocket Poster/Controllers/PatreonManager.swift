@@ -61,6 +61,13 @@ final class PatreonManager: ObservableObject {
     /// True while an OAuth request is in flight.
     @Published private(set) var isAuthenticating = false
 
+    /// Whether this install is running on the owner's iPhone (serial-gated).
+    /// All Pro features and the subscription UI depend on this.
+    @Published private(set) var isDeviceAuthorized = false
+
+    /// True once the device authorization check has run for this launch.
+    private var didEvaluateDevice = false
+
     // MARK: - Private
 
     private enum UserDefaultsKey {
@@ -82,10 +89,46 @@ final class PatreonManager: ObservableObject {
         !PatreonConfig.clientID.isEmpty
     }
 
+    // MARK: - Device Authorization
+
+    /// Runs the serial-number device check once per launch. If the device is
+    /// not the owner's iPhone, Pro is revoked and stays unavailable.
+    func evaluateAuthorizedDevice() {
+        guard !didEvaluateDevice else { return }
+        didEvaluateDevice = true
+
+        Task {
+            let authorized = await Task.detached(priority: .userInitiated) {
+                DeviceGate.isAuthorizedDevice
+            }.value
+
+            isDeviceAuthorized = authorized
+            if !authorized {
+                isPro = false
+                isLoggedIn = false
+            }
+        }
+    }
+
+    /// Blocks non-authorized devices with a friendly alert.
+    /// Returns `true` when the device may continue.
+    @discardableResult
+    private func ensureDeviceAuthorized() -> Bool {
+        guard isDeviceAuthorized else {
+            UIApplication.shared.alert(
+                title: "Not Available",
+                body: "EmPoster Pro is only available on the owner's device."
+            )
+            return false
+        }
+        return true
+    }
+
     // MARK: - Subscribe
 
     /// Opens the Patreon creator page. Shows a "coming soon" alert until configured.
     func subscribe() {
+        guard ensureDeviceAuthorized() else { return }
         guard isConfigured else {
             UIApplication.shared.alert(
                 title: "Coming Soon",
@@ -100,6 +143,7 @@ final class PatreonManager: ObservableObject {
 
     /// Starts the Patreon OAuth flow in the browser.
     func login() {
+        guard ensureDeviceAuthorized() else { return }
         guard isConfigured else {
             UIApplication.shared.alert(
                 title: "Coming Soon",
@@ -145,6 +189,7 @@ final class PatreonManager: ObservableObject {
     /// Exchanges the OAuth code for a token and verifies the membership.
     /// Requires a backend (or client secret) — until then, we only notify.
     private func completeLogin(code: String) async {
+        guard isDeviceAuthorized else { return }
         guard let exchangeURL = PatreonConfig.tokenExchangeURL else {
             UIApplication.shared.alert(
                 title: "Login Not Ready",
@@ -173,7 +218,7 @@ final class PatreonManager: ObservableObject {
     /// Not implemented yet — the backend/token exchange is required. Never grants
     /// Pro without a verified entitlement.
     func refreshMembership(accessToken: String?) async {
-        guard let accessToken, !accessToken.isEmpty else { return }
+        guard isDeviceAuthorized, let accessToken, !accessToken.isEmpty else { return }
 
         // TODO: Call the Patreon API once the backend is live:
         //   GET https://www.patreon.com/api/oauth2/v2/identity?include=memberships
