@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Darwin
 import UIKit
 import MachO
 

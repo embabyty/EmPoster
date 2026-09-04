@@ -150,30 +150,30 @@ struct MobileGestaltView: View {
 
                 // basic tweak toggles
                 Section {
-                    mgToggle(text: "Dynamic Island", minSupportedVersion: 19.0, isOn: keyBinding(["YlEtTtHlNesRBMal1CqRaA"]))
-                    mgToggle(text: "Always On Display", minSupportedVersion: 18.0, isOn: keyBinding(["j8/Omm6s1lsmTDFsXjsBfA", "2OOJf1VhaM7NxfRok3HbWQ"]))
-                    mgToggle(text: "AOD Vibrancy", minSupportedVersion: 18.0, isOn: keyBinding(["ykpu7qyhqFweVMKtxNylWA"]))
-                    mgToggle(text: "Charge Limit", minSupportedVersion: 17.0, isOn: keyBinding(["37NVydb//GP/GrhuTN+exg"]))
-                    mgToggle(text: "Boot Chime", isOn: keyBinding(["QHxt+hGLaBPbQJbXiUJX3w"]))
-                    mgToggle(text: "Liquid Glass LPM", minSupportedVersion: 19.0, isOn: keyBinding(["SAGvsp6O6kAQ4fEfDJpC4Q"]))
+                    mgToggle(text: "Dynamic Island", isOn: keyBinding(["YlEtTtHlNesRBMal1CqRaA"], type: Int.self), minSupportedVersion: 19.0)
+                    mgToggle(text: "Always On Display", isOn: keyBinding(["j8/Omm6s1lsmTDFsXjsBfA", "2OOJf1VhaM7NxfRok3HbWQ"], type: Int.self), minSupportedVersion: 18.0)
+                    mgToggle(text: "AOD Vibrancy", isOn: keyBinding(["ykpu7qyhqFweVMKtxNylWA"], type: Int.self), minSupportedVersion: 18.0)
+                    mgToggle(text: "Charge Limit", isOn: keyBinding(["37NVydb//GP/GrhuTN+exg"], type: Int.self), minSupportedVersion: 17.0)
+                    mgToggle(text: "Boot Chime", isOn: keyBinding(["QHxt+hGLaBPbQJbXiUJX3w"], type: Int.self))
+                    mgToggle(text: "Liquid Glass LPM", isOn: keyBinding(["SAGvsp6O6kAQ4fEfDJpC4Q"], type: Int.self), minSupportedVersion: 19.0)
                 } header: {
                     Label("Software-Oriented Features", systemImage: "gearshape")
                 }
 
                 Section {
-                    mgToggle(text: "Camera Control", minSupportedVersion: 18.0, isOn: keyBinding(["CwvKxM2cEogD3p+HYgaW0Q", "oOV1jhJbdV3AddkcCg0AEA"]))
-                    mgToggle(text: "Action Button", minSupportedVersion: 17.0, isOn: keyBinding(["cT44WE1EohiwRzhsZ8xEsw"]))
-                    mgToggle(text: "Crash Detection", isOn: keyBinding(["HCzWusHQwZDea6nNhaKndw"]))
+                    mgToggle(text: "Camera Control", isOn: keyBinding(["CwvKxM2cEogD3p+HYgaW0Q", "oOV1jhJbdV3AddkcCg0AEA"], type: Int.self), minSupportedVersion: 18.0)
+                    mgToggle(text: "Action Button", isOn: keyBinding(["cT44WE1EohiwRzhsZ8xEsw"], type: Int.self), minSupportedVersion: 17.0)
+                    mgToggle(text: "Crash Detection", isOn: keyBinding(["HCzWusHQwZDea6nNhaKndw"], type: Int.self))
                     if hasHomeButton() {
-                        mgToggle(text: "Enable Tap to Wake", isOn: keyBinding(["yZf3GTRMGTuwSV/lD7Cagw"]))
+                        mgToggle(text: "Enable Tap to Wake", isOn: keyBinding(["yZf3GTRMGTuwSV/lD7Cagw"], type: Int.self))
                     }
-                    mgToggle(text: "Pulse Width Modulation", minSupportedVersion: 19.0, isOn: keyBinding(["6IejgN+1Fmu5/QrZFOIeNw"]))
+                    mgToggle(text: "Pulse Width Modulation", isOn: keyBinding(["6IejgN+1Fmu5/QrZFOIeNw"], type: Int.self), minSupportedVersion: 19.0)
                 } header: {
                     Label("Hardware-Oriented Features", systemImage: "iphone")
                 }
 
                 Section {
-                    mgToggle(text: "Security Research Device UI", minSupportedVersion: 26.0, isOn: keyBinding(["XYlJKKkj2hztRP1NWWnhlw"]))
+                    mgToggle(text: "Security Research Device UI", isOn: keyBinding(["XYlJKKkj2hztRP1NWWnhlw"], type: Int.self), minSupportedVersion: 26.0)
 
                     mgToggle(
                         text: "Disable Region Restrictions",
@@ -233,10 +233,10 @@ struct MobileGestaltView: View {
                         text: "Allow Installing iPadOS Apps",
                         isOn: keyBinding(["9MZ5AdH43csAUajl/dU+IQ"], type: [Int].self, defaultValue: [1], onValue: [1, 2])
                     )
-                    mgToggle(text: "Apple Pencil Settings", isOn: keyBinding(["yhHcB0iH0d1XzPO/CFd3ow"]))
+                    mgToggle(text: "Apple Pencil Settings", isOn: keyBinding(["yhHcB0iH0d1XzPO/CFd3ow"], type: Int.self))
 
                     if UIDevice.current.userInterfaceIdiom == .pad {
-                        mgToggle(text: "Stage Manager", isOn: keyBinding(["qeaj75wk3HF4DwQ8qbIi7g"]))
+                        mgToggle(text: "Stage Manager", isOn: keyBinding(["qeaj75wk3HF4DwQ8qbIi7g"], type: Int.self))
                     }
 
                     mgToggle(
@@ -251,9 +251,9 @@ struct MobileGestaltView: View {
                 }
 
                 Section {
-                    mgToggle(text: "Internal Storage", isOn: keyBinding(["LBJfwOEzExRxzlAnSuI7eg"]))
+                    mgToggle(text: "Internal Storage", isOn: keyBinding(["LBJfwOEzExRxzlAnSuI7eg"], type: Int.self))
                     mgToggle(text: "Internal Features", isOn: internalBinding())
-                    mgToggle(text: "Metal HUD in All Apps", isOn: keyBinding(["EqrsVvjcYDdxHBiQmGhAWw"]))
+                    mgToggle(text: "Metal HUD in All Apps", isOn: keyBinding(["EqrsVvjcYDdxHBiQmGhAWw"], type: Int.self))
                 } header: {
                     Label("Internal", systemImage: "ant")
                 }
@@ -276,7 +276,7 @@ struct MobileGestaltView: View {
                 productType = cacheExtra?["h9jDsbgj7xIVeIQ8S3/X3Q"] as? String ?? machineName()
             }
         }
-        .onChange(of: manager.dictionary) { _ in
+        .onReceive(manager.$dictionary) { _ in
             if manager.isLoaded {
                 let cacheExtra = manager.cacheExtra
                 let artwork = cacheExtra?["oPeik/9e8lQWMszEjbPzng"] as? NSMutableDictionary
