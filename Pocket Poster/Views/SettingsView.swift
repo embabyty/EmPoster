@@ -35,7 +35,6 @@ struct SettingsView: View {
                             if patreonManager.isLoggedIn {
                                 Text([
                                     patreonManager.memberName,
-                                    patreonManager.memberEmail,
                                     patreonManager.tier
                                 ].compactMap { $0 }.joined(separator: " · "))
                                     .font(.caption)
@@ -51,29 +50,6 @@ struct SettingsView: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }
-                } else if !patreonManager.isDeviceAuthorized {
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                        patreonManager.login()
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "lock.fill")
-                                .font(.title2)
-                                .foregroundStyle(.secondary)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("EmPoster Pro")
-                                    .font(.headline)
-                                Text("Sign in as the app owner to unlock.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.footnote)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    .foregroundStyle(Color(uiColor: .label))
                 } else {
                     Button(action: {
                         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
