@@ -1,6 +1,6 @@
 //
 //  MobileGestaltView.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  MobileGestalt (MGA) tweak UI, ported from rooootdev/mond's GestaltView.
 //  Replaces the PartyUI components (PlainToggle / PlainAlert / Alertinator)

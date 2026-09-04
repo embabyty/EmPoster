@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 5/31/25.
 //
@@ -20,7 +20,7 @@ struct ContentView: View {
     @AppStorage("pbHash") var pbHash: String = ""
     
     @ObservedObject var pbManager = PosterBoardManager.shared
-    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+    @ObservedObject private var patreonManager = PatreonManager.shared
     
     private let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
     
@@ -154,7 +154,7 @@ struct ContentView: View {
                     Label("Actions", systemImage: "hammer")
                 }
             }
-            .navigationTitle("Pocket Poster")
+            .navigationTitle("EmPoster")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if let wpURL = URL(string: PosterBoardManager.WallpapersURL) {
@@ -166,7 +166,7 @@ struct ContentView: View {
                 ToolbarItem(placement: .topBarTrailing, content: {
                     HStack {
                         // MobileGestalt tweaks — subscribers only
-                        if subscriptionManager.isPro {
+                        if patreonManager.isPro {
                             NavigationLink(destination: {
                                 MobileGestaltView()
                             }, label: {

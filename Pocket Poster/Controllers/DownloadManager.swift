@@ -1,6 +1,6 @@
 //
 //  DownloadManager.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 6/1/25.
 //

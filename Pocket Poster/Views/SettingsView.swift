@@ -1,6 +1,6 @@
 //
 //  SettingsView.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 6/1/25.
 //
@@ -13,7 +13,7 @@ struct SettingsView: View {
     @AppStorage("cpHash") var cpHash: String = "" // CarPlay hash
     @AppStorage("ignoreDurationLimit") var ignoreDurationLimit: Bool = false
     
-    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+    @ObservedObject private var patreonManager = PatreonManager.shared
     
     @State var checkingForHash: Bool = false
     @State var hashCheckTask: Task<Void, any Error>? = nil
@@ -22,23 +22,33 @@ struct SettingsView: View {
     
     var body: some View {
         List {
-            // MARK: Pocket Poster Pro
+            // MARK: EmPoster Pro
             Section {
-                if subscriptionManager.isPro {
+                if patreonManager.isPro {
                     HStack(spacing: 12) {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.title2)
                             .foregroundStyle(.green)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Pocket Poster Pro is Active")
+                            Text("EmPoster Pro is Active")
                                 .font(.headline)
-                            if let subscription = subscriptionManager.currentSubscription {
-                                Text("\(subscription.displayName) — \(subscription.displayPrice)")
+                            if patreonManager.isLoggedIn {
+                                Text([
+                                    patreonManager.memberName,
+                                    patreonManager.tier
+                                ].compactMap { $0 }.joined(separator: " · "))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
                         Spacer()
+                    }
+                    Button(action: {
+                        patreonManager.logOut()
+                    }) {
+                        Text("Log Out")
+                            .font(.footnote)
+                            .foregroundStyle(.red)
                     }
                 } else {
                     Button(action: {
@@ -50,9 +60,29 @@ struct SettingsView: View {
                                 .font(.title2)
                                 .foregroundStyle(.yellow)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Unlock Pocket Poster Pro")
+                                Text("Subscribe on Patreon")
                                     .font(.headline)
-                                Text("Disable the video duration limit, unlock Pro wallpapers, and support the app.")
+                                Text("Support the app and unlock Pro wallpapers, videos & MGA tools.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .foregroundStyle(Color(uiColor: .label))
+
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        patreonManager.login()
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.badge.key")
+                                .font(.title2)
+                                .foregroundStyle(.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Login with Patreon")
+                                    .font(.headline)
+                                Text("Already a patron? Log in to unlock Pro.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -62,7 +92,7 @@ struct SettingsView: View {
                     .foregroundStyle(Color(uiColor: .label))
                 }
             } header: {
-                Label("Pocket Poster Pro", systemImage: "crown")
+                Label("EmPoster Pro", systemImage: "crown")
             }
             .sheet(isPresented: $showSubscriptionSheet) {
                 SubscriptionView()
@@ -128,7 +158,7 @@ struct SettingsView: View {
             }
             
             Section {
-                if subscriptionManager.isPro {
+                if patreonManager.isPro {
                     HStack {
                         Label("Disable Video Duration Limit", systemImage: "ruler")
                         Spacer()

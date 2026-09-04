@@ -1,6 +1,6 @@
 //
 //  RespringHelper.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Mond-style instant respring (WebKit GPU crash @neonmodder123).
 //  No VC present/dismiss chain — WKWebView on a top-level window, load immediately.

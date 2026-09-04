@@ -1,6 +1,6 @@
 //
 //  CPBitmapHandler.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 6/16/25.
 //

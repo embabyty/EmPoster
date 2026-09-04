@@ -1,21 +1,15 @@
 //
 //  SubscriptionView.swift
-//  Pocket Poster
+//  EmPoster
 //
-//  Created for StoreKit 2 testing.
+//  Support sheet — EmPoster Pro via Patreon (replaces the StoreKit paywall).
 //
 
 import SwiftUI
-import StoreKit
 
-/// Paywall for "Pocket Poster Pro" — auto-renewable subscriptions.
-/// Works with the local `PocketPoster.storekit` configuration in Xcode.
 struct SubscriptionView: View {
-    @ObservedObject private var store = SubscriptionManager.shared
+    @ObservedObject private var patreon = PatreonManager.shared
     @Environment(\.dismiss) private var dismiss
-
-    @State private var selectedPlan: Product?
-    @State private var errorAlertPresented = false
 
     private struct FeatureRow: Identifiable {
         let icon: String
@@ -27,7 +21,8 @@ struct SubscriptionView: View {
         FeatureRow(icon: "clock.badge.checkmark", text: "Disable the video duration limit"),
         FeatureRow(icon: "film.stack", text: "Apply video wallpapers without restrictions"),
         FeatureRow(icon: "crown.fill", text: "Download Pro-only custom wallpapers"),
-        FeatureRow(icon: "star.circle", text: "Support ongoing Pocket Poster development")
+        FeatureRow(icon: "bolt.fill", text: "MobileGestalt tweaks (MGA)"),
+        FeatureRow(icon: "star.circle", text: "Support ongoing EmPoster development")
     ]
 
     var body: some View {
@@ -36,56 +31,33 @@ struct SubscriptionView: View {
                 VStack(spacing: 24) {
                     header
 
-                    if store.isPro {
+                    if patreon.isPro {
                         activeCard
                     }
 
                     featuresCard
-                    planCards
 
-                    subscribeButton
-
-                    Button("Restore Purchases") {
-                        Task { await store.restorePurchases() }
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .disabled(store.isPurchasing)
+                    patreonButtons
 
                     termsText
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 24)
             }
-            .navigationTitle("Pocket Poster Pro")
+            .navigationTitle("EmPoster Pro")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close") { dismiss() }
                 }
             }
-            .task {
-                await store.loadProducts()
-                if selectedPlan == nil {
-                    selectedPlan = store.products.first { $0.id == SubscriptionManager.Plan.proYearly }
-                        ?? store.products.first
-                }
-            }
-            .onChange(of: store.products) { products in
-                if selectedPlan == nil {
-                    selectedPlan = products.first { $0.id == SubscriptionManager.Plan.proYearly }
-                        ?? products.first
-                }
-            }
-            .alert("Purchase Error", isPresented: $errorAlertPresented) {
-                Button("OK", role: .cancel) { store.clearError() }
+            .alert("Patreon Error", isPresented: Binding(
+                get: { patreon.lastError != nil },
+                set: { if !$0 { patreon.lastError = nil } }
+            )) {
+                Button("OK", role: .cancel) { patreon.lastError = nil }
             } message: {
-                if let error = store.lastError {
-                    Text(error)
-                }
-            }
-            .onChange(of: store.lastError) { error in
-                errorAlertPresented = error != nil
+                Text(patreon.lastError ?? "")
             }
         }
     }
@@ -103,7 +75,7 @@ struct SubscriptionView: View {
                 .font(.largeTitle)
                 .fontWeight(.heavy)
 
-            Text("Unlock the full Pocket Poster experience with an active subscription.")
+            Text("Unlock the full EmPoster experience by supporting us on Patreon.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -119,10 +91,15 @@ struct SubscriptionView: View {
                 .foregroundStyle(.green)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(store.isUltra ? "Pocket Poster Ultra is Active" : "Pocket Poster Pro is Active")
+                Text("EmPoster Pro is Active")
                     .font(.headline)
-                if let subscription = store.currentSubscription {
-                    Text("\(subscription.displayName) — \(subscription.displayPrice)")
+                if let name = patreon.memberName {
+                    Text(name)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let tier = patreon.tier {
+                    Text(tier)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -164,159 +141,71 @@ struct SubscriptionView: View {
         )
     }
 
-    // MARK: - Plans
+    // MARK: - Patreon
 
-    private var planCards: some View {
-        VStack(spacing: 20) {
-            tierSection(
-                title: "Pro",
-                subtitle: "Everything you need — video wallpapers, no duration limit, Pro wallpapers.",
-                plans: store.products.filter { SubscriptionManager.Plan.proIDs.contains($0.id) }
-            )
-
-            tierSection(
-                title: "Ultra",
-                subtitle: "The complete Pocket Poster experience — includes every Pro feature.",
-                plans: store.products.filter { SubscriptionManager.Plan.ultraIDs.contains($0.id) }
-            )
-        }
-    }
-
-    private func tierSection(title: String, subtitle: String, plans: [Product]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.title3)
-                    .fontWeight(.bold)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            ForEach(plans) { product in
-                planRow(for: product)
-            }
-        }
-    }
-
-    private func planRow(for product: Product) -> some View {
-        let isSelected = selectedPlan?.id == product.id
-        let isYearly = product.id == SubscriptionManager.Plan.proYearly
-            || product.id == SubscriptionManager.Plan.ultraYearly
-
-        return Button {
-            selectedPlan = product
-        } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
+    private var patreonButtons: some View {
+        VStack(spacing: 12) {
+            if !patreon.isPro {
+                Button(action: {
+                    patreon.subscribe()
+                }) {
                     HStack(spacing: 8) {
-                        Text(product.displayName)
-                            .font(.headline)
-                            .foregroundStyle(Color(uiColor: .label))
-
-                        if isYearly {
-                            Text("BEST VALUE")
-                                .font(.caption2)
-                                .fontWeight(.bold)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.orange.opacity(0.25)))
-                                .foregroundStyle(.orange)
-                        }
-                    }
-
-                    Text("\(product.displayPrice) \(periodLabel(for: product))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? .blue : Color(uiColor: .tertiaryLabel))
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(uiColor: .secondarySystemBackground))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Subscribe Button
-
-    @ViewBuilder
-    private var subscribeButton: some View {
-        if store.isPro {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                Text("Subscribed")
-            }
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .foregroundStyle(.white)
-            .background(Capsule().fill(Color.green))
-        } else if let plan = selectedPlan {
-            Button {
-                Task { await store.purchase(plan) }
-            } label: {
-                HStack(spacing: 8) {
-                    if store.isPurchasing {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Text("Subscribe for \(plan.displayPrice)/\(shortPeriodLabel(for: plan))")
+                        Image(systemName: "heart.fill")
+                        Text("Subscribe on Patreon")
                             .fontWeight(.semibold)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(.white)
+                    .background(Capsule().fill(patreonColor))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .foregroundStyle(.white)
-                .background(Capsule().fill(Color.blue))
+                .buttonStyle(.plain)
+
+                Text("Already a patron? Log in to unlock Pro.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button(action: {
+                    patreon.login()
+                }) {
+                    HStack(spacing: 8) {
+                        if patreon.isAuthenticating {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "person.badge.key")
+                            Text("Login with Patreon")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(.white)
+                    .background(Capsule().fill(Color.blue))
+                }
+                .buttonStyle(.plain)
+                .disabled(patreon.isAuthenticating)
+            } else {
+                Button(action: {
+                    patreon.logOut()
+                }) {
+                    Text("Log Out")
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                }
+                .buttonStyle(.plain)
             }
-            .disabled(store.isPurchasing)
-        } else {
-            ProgressView()
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
         }
     }
 
-    // MARK: - Helpers
-
-    private func periodLabel(for product: Product) -> String {
-        guard let period = product.subscription?.subscriptionPeriod else { return "" }
-        switch period.unit {
-        case .week:
-            return period.value == 1 ? "per week" : "per \(period.value) weeks"
-        case .month:
-            return period.value == 1 ? "per month" : "per \(period.value) months"
-        case .year:
-            return period.value == 1 ? "per year" : "per \(period.value) years"
-        default:
-            return ""
-        }
+    private var patreonColor: Color {
+        Color(red: 0.98, green: 0.26, blue: 0.30)
     }
 
-    private func shortPeriodLabel(for product: Product) -> String {
-        guard let period = product.subscription?.subscriptionPeriod else { return "" }
-        switch period.unit {
-        case .week: return "week"
-        case .month: return "month"
-        case .year: return "year"
-        default: return "period"
-        }
-    }
+    // MARK: - Terms
 
     private var termsText: some View {
-        Text("Payment will be charged to your Apple ID account at the confirmation of purchase. The subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. Manage or cancel your subscription in your Apple ID Account Settings at any time. Pocket Poster is offered on an \"as is\" basis and no refunds are provided for unused portions of a subscription period.")
+        Text("Subscribing on Patreon supports EmPoster development. Pro features are unlocked by logging in with the Patreon account that holds an active pledge. EmPoster is offered on an \"as is\" basis and no refunds are provided.")
             .font(.caption2)
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.center)

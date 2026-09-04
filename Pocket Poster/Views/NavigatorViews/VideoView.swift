@@ -1,6 +1,6 @@
 //
 //  VideoView.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 6/11/25.
 //
@@ -12,7 +12,7 @@ import AVKit
 struct VideoView: View {
     @ObservedObject var pbManager = PosterBoardManager.shared
     @AppStorage("ignoreDurationLimit") var ignoreDurationLimit: Bool = false
-    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+    @ObservedObject private var patreonManager = PatreonManager.shared
     
     @State var selectedVideo: PhotosPickerItem?
     @State private var currentPage: Int = 0
@@ -144,7 +144,7 @@ struct VideoView: View {
                         do {
                             if let movie = try await selectedVideo?.loadTransferable(type: Movie.self) {
                                 await MainActor.run {
-                                    if !(ignoreDurationLimit && subscriptionManager.isPro) && VideoHandler.isVideoTooLong(at: movie.url) {
+                                    if !(ignoreDurationLimit && patreonManager.isPro) && VideoHandler.isVideoTooLong(at: movie.url) {
                                         pbManager.videos.remove(at: id)
                                         UIApplication.shared.alert(title: NSLocalizedString("Failed to Import Video", comment: ""), body: String(format: NSLocalizedString("The video you imported is too long! Your video must be %@ seconds or less.", comment: ""), "\(Int(VideoHandler.MaxDurationSecs))"))
                                     } else {

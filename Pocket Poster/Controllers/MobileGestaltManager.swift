@@ -1,6 +1,6 @@
 //
 //  MobileGestaltManager.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  MobileGestalt (MGA) tweak engine ported from rooootdev/mond:
 //  - sandbox access via the bad_query container query route (probe_leaf variant)
