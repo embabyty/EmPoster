@@ -1604,7 +1604,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kết nối thiết bị của bạn với Nugget và chọn nút \"Trợ giúp Pocket Poster\"."
+            "value" : "Kết nối thiết bị của bạn với Nugget và chọn nút \"Trợ giúp EmPoster\"."
           }
         },
         "zh-CN" : {
@@ -8247,60 +8247,60 @@
         }
       }
     },
-    "Pocket Poster" : {
+    "EmPoster" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "بوكيت بوستر Pocket Poster"
+            "value" : "بوكيت بوستر EmPoster"
           }
         },
         "ar-AE" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster Ar"
+            "value" : "EmPoster Ar"
           }
         },
         "ar-SA" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "es-MX" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "fr-BE" : {
@@ -8312,61 +8312,61 @@
         "fr-CA" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "fr-CH" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "fr-LU" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "th" : {
@@ -8378,84 +8378,84 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "zh-CN" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster"
+            "value" : "EmPoster"
           }
         }
       }
     },
-    "Pocket Poster %@ is available, do you want to visit releases page?" : {
+    "EmPoster %@ is available, do you want to visit releases page?" : {
       "comment" : "app update available on GitHub",
       "localizations" : {
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ je k dispozici, přejete si ho stáhnout z GitHubu?"
+            "value" : "EmPoster %@ je k dispozici, přejete si ho stáhnout z GitHubu?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ ist verfügbar, willst du die Releases-Seite besuchen?"
+            "value" : "EmPoster %@ ist verfügbar, willst du die Releases-Seite besuchen?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ esta disponible, ¿quieres visitar la pagina de lanzamientos?"
+            "value" : "EmPoster %@ esta disponible, ¿quieres visitar la pagina de lanzamientos?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ est disponible, voulez-vous visiter la page des communiqués?"
+            "value" : "EmPoster %@ est disponible, voulez-vous visiter la page des communiqués?"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Доступен Pocket Poster %@, хотите ли вы перейти на веб-сайт релизов?"
+            "value" : "Доступен EmPoster %@, хотите ли вы перейти на веб-сайт релизов?"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ พร้อมใช้งาน ต้องการไปหน้าดาวน์โหลดหรือไป"
+            "value" : "EmPoster %@ พร้อมใช้งาน ต้องการไปหน้าดาวน์โหลดหรือไป"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ kullanılabilir, yayınlamaları görmek ister misin?"
+            "value" : "EmPoster %@ kullanılabilir, yayınlamaları görmek ister misin?"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ đã được phát hành, bạn có muốn đến trang tải xuống không?"
+            "value" : "EmPoster %@ đã được phát hành, bạn có muốn đến trang tải xuống không?"
           }
         },
         "zh-CN" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster %@ 已推出，您想访问发布页面吗？"
+            "value" : "EmPoster %@ 已推出，您想访问发布页面吗？"
           }
         }
       }
@@ -10873,7 +10873,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Um anzuwenden, Pocket Poster wird Posterboard öffnen."
+            "value" : "Um anzuwenden, EmPoster wird Posterboard öffnen."
           }
         },
         "es" : {
@@ -10957,7 +10957,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Чтобы обои установились, Pocket Poster потребуется открыть PosterBoard."
+            "value" : "Чтобы обои установились, EmPoster потребуется открыть PosterBoard."
           }
         },
         "th" : {
@@ -11913,60 +11913,60 @@
         }
       }
     },
-    "Welcome to Pocket Poster!" : {
+    "Welcome to EmPoster!" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مرحباً ب Pocket Poster!"
+            "value" : "مرحباً ب EmPoster!"
           }
         },
         "ar-AE" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مرحبًا بك في Pocket Poster!"
+            "value" : "مرحبًا بك في EmPoster!"
           }
         },
         "ar-SA" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مرحبا الى Pocket Poster!"
+            "value" : "مرحبا الى EmPoster!"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добре дошли в Pocket Poster!"
+            "value" : "Добре дошли в EmPoster!"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vítejte v Pocket Posteru!"
+            "value" : "Vítejte v EmPosteru!"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Willkommen zum Pocket Poster!"
+            "value" : "Willkommen zum EmPoster!"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenido a Pocket Poster!"
+            "value" : "Bienvenido a EmPoster!"
           }
         },
         "es-MX" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¡Bienvenid@ a Pocket Poster!"
+            "value" : "¡Bienvenid@ a EmPoster!"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenue à Pocket Poster!"
+            "value" : "Bienvenue à EmPoster!"
           }
         },
         "fr-BE" : {
@@ -11978,91 +11978,91 @@
         "fr-CA" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenue à Pocket Poster"
+            "value" : "Bienvenue à EmPoster"
           }
         },
         "fr-CH" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenue sur Pocket Poster !"
+            "value" : "Bienvenue sur EmPoster !"
           }
         },
         "fr-LU" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenue sur Pocket Poster !"
+            "value" : "Bienvenue sur EmPoster !"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Üdvözlünk a Pocket Poster-be!"
+            "value" : "Üdvözlünk a EmPoster-be!"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Benvenuto su Pocket Poster!"
+            "value" : "Benvenuto su EmPoster!"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster へようこそ！"
+            "value" : "EmPoster へようこそ！"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster에 오신 것을 환영합니다!"
+            "value" : "EmPoster에 오신 것을 환영합니다!"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Welkom bij Pocket Poster!"
+            "value" : "Welkom bij EmPoster!"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Witaj w Pocket Poster!"
+            "value" : "Witaj w EmPoster!"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добро пожаловать в Pocket Poster!"
+            "value" : "Добро пожаловать в EmPoster!"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ยินดีสู่ Pocket Poster!"
+            "value" : "ยินดีสู่ EmPoster!"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pocket Poster'a Hoşgeldiniz!"
+            "value" : "EmPoster'a Hoşgeldiniz!"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chào mừng đến với Pocket Poster!"
+            "value" : "Chào mừng đến với EmPoster!"
           }
         },
         "zh-CN" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "欢迎来到 Pocket Poster！"
+            "value" : "欢迎来到 EmPoster！"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "歡迎使用 Pocket Poster！"
+            "value" : "歡迎使用 EmPoster！"
           }
         }
       }

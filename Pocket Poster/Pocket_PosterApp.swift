@@ -1,6 +1,6 @@
 //
-//  Pocket_PosterApp.swift
-//  Pocket Poster
+//  EmPosterApp.swift
+//  EmPoster
 //
 //  Created by lemin on 5/31/25.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct Pocket_PosterApp: App {
+struct EmPosterApp: App {
     // Prefs
     @ObservedObject var dlManager = DownloadManager.shared
     
@@ -53,8 +53,12 @@ struct Pocket_PosterApp: App {
                 }
             }
             .onOpenURL(perform: { url in
+                // Patreon OAuth callback
+                if url.absoluteString.starts(with: "pocketposter://patreon") {
+                    PatreonManager.shared.handleRedirect(url)
+                }
                 // Download URL
-                if url.absoluteString.starts(with: "pocketposter://download") {
+                else if url.absoluteString.starts(with: "pocketposter://download") {
                     dlManager.startTendiesDownload(for: url)
                 }
                 // App Hash URL

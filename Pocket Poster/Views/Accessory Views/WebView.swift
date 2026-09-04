@@ -1,6 +1,6 @@
 //
 //  WebView.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 7/6/25.
 //

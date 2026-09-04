@@ -1,6 +1,6 @@
 //
 //  ExploreView.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 7/6/25.
 //
@@ -13,7 +13,7 @@ let CORNER_RADIUS: CGFloat = 12
 
 struct ExploreView: View {
     @ObservedObject var cowabungaAPI = CowabungaAPI.shared
-    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+    @ObservedObject private var patreonManager = PatreonManager.shared
     
     // lazyvgrid
     @State private var gridItemLayout = [GridItem(.adaptive(minimum: MIN_SIZE))]
@@ -56,7 +56,7 @@ struct ExploreView: View {
                         ForEach(wallpapers) { wallpaper in
                             if searchTerm == "" || wallpaper.name.lowercased().contains(searchTerm.lowercased()) || (wallpaper.authors ?? "").lowercased().contains(searchTerm.lowercased()) {
                                 Button(action: {
-                                    if wallpaper.pro == true && !subscriptionManager.isPro {
+                                    if wallpaper.pro == true && !patreonManager.isPro {
                                         // Pro-only wallpaper — prompt to subscribe instead.
                                         Haptic.shared.play(.light)
                                         showSubscriptionSheet = true
@@ -116,7 +116,7 @@ struct ExploreView: View {
                                             }
                                             .lineLimit(1)
                                             Spacer()
-                                            if wallpaper.pro == true && !subscriptionManager.isPro {
+                                            if wallpaper.pro == true && !patreonManager.isPro {
                                                 Image(systemName: "lock.fill")
                                                     .foregroundColor(.yellow)
                                             } else {

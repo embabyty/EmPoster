@@ -1,6 +1,6 @@
 //
 //  TintedButton.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 5/31/25.
 //

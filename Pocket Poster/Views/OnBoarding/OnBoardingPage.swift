@@ -1,6 +1,6 @@
 //
 //  OnBoardingPage.swift
-//  Pocket Poster
+//  EmPoster
 //
 //  Created by lemin on 5/31/25.
 //
@@ -29,7 +29,7 @@ struct OnBoardingPage: Identifiable {
 
 let onBoardingCards: [OnBoardingPage] = [
     .init(
-        title: NSLocalizedString("Welcome to Pocket Poster!", comment: ""),
+        title: NSLocalizedString("Welcome to EmPoster!", comment: ""),
         description: NSLocalizedString("Here is a tutorial to help you get started with the app.", comment: ""),
         image: "Logo"
     ),

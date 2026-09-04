@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "6F09B79C2DEB694B00CDE89C"
-               BuildableName = "Pocket Poster.app"
-               BlueprintName = "Pocket Poster"
-               ReferencedContainer = "container:Pocket Poster.xcodeproj">
+               BuildableName = "EmPoster.app"
+               BlueprintName = "EmPoster"
+               ReferencedContainer = "container:EmPoster.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B563257F-2C17-46B6-B26D-73D1B18F7A6C"
-               BuildableName = "PocketPoster.storekit"
-               BlueprintName = "PocketPoster.storekit"
-               ReferencedContainer = "container:PocketPoster.storekit">
+               BuildableName = "EmPoster.storekit"
+               BlueprintName = "EmPoster.storekit"
+               ReferencedContainer = "container:EmPoster.storekit">
             </BuildableReference>
          </Location>
       </StoreKitConfigurationFileReference>
@@ -56,9 +56,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6F09B79C2DEB694B00CDE89C"
-            BuildableName = "Pocket Poster.app"
-            BlueprintName = "Pocket Poster"
-            ReferencedContainer = "container:Pocket Poster.xcodeproj">
+            BuildableName = "EmPoster.app"
+            BlueprintName = "EmPoster"
+            ReferencedContainer = "container:EmPoster.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -73,9 +73,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6F09B79C2DEB694B00CDE89C"
-            BuildableName = "Pocket Poster.app"
-            BlueprintName = "Pocket Poster"
-            ReferencedContainer = "container:Pocket Poster.xcodeproj">
+            BuildableName = "EmPoster.app"
+            BlueprintName = "EmPoster"
+            ReferencedContainer = "container:EmPoster.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

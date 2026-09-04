@@ -10,8 +10,8 @@
       "internalID" : "61C5C9EC-57A7-43AE-A33D-0AEC76B820CA",
       "localizations" : [
         {
-          "description" : "Unlock Pocket Poster Pro for one month.",
-          "displayName" : "Pocket Poster Pro (Monthly)",
+          "description" : "Unlock EmPoster Pro for one month.",
+          "displayName" : "EmPoster Pro (Monthly)",
           "locale" : "en_US"
         }
       ],
@@ -26,8 +26,8 @@
       "internalID" : "F3862C1F-48A1-40DD-AA33-DA4B06A47DCB",
       "localizations" : [
         {
-          "description" : "Unlock Pocket Poster Pro for one year.",
-          "displayName" : "Pocket Poster Pro (Yearly)",
+          "description" : "Unlock EmPoster Pro for one year.",
+          "displayName" : "EmPoster Pro (Yearly)",
           "locale" : "en_US"
         }
       ],
@@ -42,8 +42,8 @@
       "internalID" : "07BAEE2D-5379-4B6F-8542-EF7EED7ED14F",
       "localizations" : [
         {
-          "description" : "Unlock Pocket Poster Ultra for one month.",
-          "displayName" : "Pocket Poster Ultra (Monthly)",
+          "description" : "Unlock EmPoster Ultra for one month.",
+          "displayName" : "EmPoster Ultra (Monthly)",
           "locale" : "en_US"
         }
       ],
@@ -58,8 +58,8 @@
       "internalID" : "27C14DE1-C39C-4EE0-983C-D7256E1553FE",
       "localizations" : [
         {
-          "description" : "Unlock Pocket Poster Ultra for one year.",
-          "displayName" : "Pocket Poster Ultra (Yearly)",
+          "description" : "Unlock EmPoster Ultra for one year.",
+          "displayName" : "EmPoster Ultra (Yearly)",
           "locale" : "en_US"
         }
       ],
@@ -83,7 +83,7 @@
       "localizations" : [
 
       ],
-      "name" : "Pocket Poster",
+      "name" : "EmPoster",
       "subscriptions" : [
         {
           "adHocOffers" : [
@@ -101,8 +101,8 @@
           },
           "localizations" : [
             {
-              "description" : "Unlock Pocket Poster Pro for one month.",
-              "displayName" : "Pocket Poster Pro (Monthly)",
+              "description" : "Unlock EmPoster Pro for one month.",
+              "displayName" : "EmPoster Pro (Monthly)",
               "locale" : "en_US"
             }
           ],
@@ -128,8 +128,8 @@
           },
           "localizations" : [
             {
-              "description" : "Unlock Pocket Poster Pro for one year.",
-              "displayName" : "Pocket Poster Pro (Yearly)",
+              "description" : "Unlock EmPoster Pro for one year.",
+              "displayName" : "EmPoster Pro (Yearly)",
               "locale" : "en_US"
             }
           ],
@@ -155,8 +155,8 @@
           },
           "localizations" : [
             {
-              "description" : "Unlock Pocket Poster Ultra for one month.",
-              "displayName" : "Pocket Poster Ultra (Monthly)",
+              "description" : "Unlock EmPoster Ultra for one month.",
+              "displayName" : "EmPoster Ultra (Monthly)",
               "locale" : "en_US"
             }
           ],
@@ -182,8 +182,8 @@
           },
           "localizations" : [
             {
-              "description" : "Unlock Pocket Poster Ultra for one year.",
-              "displayName" : "Pocket Poster Ultra (Yearly)",
+              "description" : "Unlock EmPoster Ultra for one year.",
+              "displayName" : "EmPoster Ultra (Yearly)",
               "locale" : "en_US"
             }
           ],
