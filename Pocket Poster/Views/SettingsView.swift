@@ -13,12 +13,61 @@ struct SettingsView: View {
     @AppStorage("cpHash") var cpHash: String = "" // CarPlay hash
     @AppStorage("ignoreDurationLimit") var ignoreDurationLimit: Bool = false
     
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
+    
     @State var checkingForHash: Bool = false
     @State var hashCheckTask: Task<Void, any Error>? = nil
     @State var detectingOnDevice: Bool = false
+    @State var showSubscriptionSheet: Bool = false
     
     var body: some View {
         List {
+            // MARK: Pocket Poster Pro
+            Section {
+                if subscriptionManager.isPro {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pocket Poster Pro is Active")
+                                .font(.headline)
+                            if let subscription = subscriptionManager.currentSubscription {
+                                Text("\(subscription.displayName) — \(subscription.displayPrice)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                    }
+                } else {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        showSubscriptionSheet = true
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "crown.fill")
+                                .font(.title2)
+                                .foregroundStyle(.yellow)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Unlock Pocket Poster Pro")
+                                    .font(.headline)
+                                Text("Disable the video duration limit and support the app.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .foregroundStyle(Color(uiColor: .label))
+                }
+            } header: {
+                Label("Pocket Poster Pro", systemImage: "crown")
+            }
+            .sheet(isPresented: $showSubscriptionSheet) {
+                SubscriptionView()
+            }
+            
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                     TextField("Enter PosterBoard App Hash", text: $pbHash)
@@ -79,9 +128,26 @@ struct SettingsView: View {
             }
             
             Section {
-                Toggle(isOn: $ignoreDurationLimit, label: {
-                    Label("Disable Video Duration Limit", systemImage: "ruler")
-                })
+                if subscriptionManager.isPro {
+                    HStack {
+                        Label("Disable Video Duration Limit", systemImage: "ruler")
+                        Spacer()
+                        Toggle("", isOn: $ignoreDurationLimit)
+                            .labelsHidden()
+                    }
+                } else {
+                    Button(action: {
+                        showSubscriptionSheet = true
+                    }) {
+                        HStack {
+                            Label("Disable Video Duration Limit", systemImage: "ruler")
+                            Spacer()
+                            Image(systemName: "lock.fill")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .foregroundStyle(Color(uiColor: .label))
+                }
             } header: {
                 Label("Preferences", systemImage: "gear")
             }
