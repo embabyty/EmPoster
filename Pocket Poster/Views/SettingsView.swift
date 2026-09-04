@@ -24,7 +24,22 @@ struct SettingsView: View {
         List {
             // MARK: EmPoster Pro
             Section {
-                if patreonManager.isPro {
+                if !patreonManager.isDeviceAuthorized {
+                    HStack(spacing: 12) {
+                        Image(systemName: "lock.fill")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("EmPoster Pro")
+                                .font(.headline)
+                            Text("Not available on this device.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .foregroundStyle(Color(uiColor: .label))
+                } else if patreonManager.isPro {
                     HStack(spacing: 12) {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.title2)

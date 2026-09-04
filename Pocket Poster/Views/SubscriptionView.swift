@@ -27,22 +27,12 @@ struct SubscriptionView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    header
-
-                    if patreon.isPro {
-                        activeCard
-                    }
-
-                    featuresCard
-
-                    patreonButtons
-
-                    termsText
+            Group {
+                if patreon.isDeviceAuthorized {
+                    content
+                } else {
+                    notAvailable
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 24)
             }
             .navigationTitle("EmPoster Pro")
             .navigationBarTitleDisplayMode(.inline)
@@ -60,6 +50,50 @@ struct SubscriptionView: View {
                 Text(patreon.lastError ?? "")
             }
         }
+    }
+
+    // MARK: - Content (authorized device only)
+
+    private var content: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                header
+
+                if patreon.isPro {
+                    activeCard
+                }
+
+                featuresCard
+
+                patreonButtons
+
+                termsText
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 24)
+        }
+    }
+
+    // MARK: - Not Available
+
+    private var notAvailable: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+                .padding(.bottom, 4)
+
+            Text("EmPoster Pro is not available on this device.")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+
+            Text("This subscription is only available on the owner's iPhone.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
     }
 
     // MARK: - Header
