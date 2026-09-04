@@ -28,10 +28,10 @@ struct SubscriptionView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if patreon.isDeviceAuthorized {
+                if patreon.isPro || patreon.isDeviceAuthorized {
                     content
                 } else {
-                    notAvailable
+                    ownerLogin
                 }
             }
             .navigationTitle("EmPoster Pro")
@@ -74,23 +74,44 @@ struct SubscriptionView: View {
         }
     }
 
-    // MARK: - Not Available
+    // MARK: - Owner Login
 
-    private var notAvailable: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "lock.fill")
+    private var ownerLogin: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "person.badge.key.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.blue)
                 .padding(.bottom, 4)
 
-            Text("EmPoster Pro is not available on this device.")
+            Text("EmPoster Pro is reserved for the app owner.")
                 .font(.headline)
                 .multilineTextAlignment(.center)
 
-            Text("This subscription is only available on the owner's iPhone.")
+            Text("Sign in with the owner's Patreon account to unlock Pro on this device.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+
+            Button(action: {
+                patreon.login()
+            }) {
+                HStack(spacing: 8) {
+                    if patreon.isAuthenticating {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "person.badge.key")
+                        Text("Login with Patreon")
+                            .fontWeight(.semibold)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .foregroundStyle(.white)
+                .background(Capsule().fill(Color.blue))
+            }
+            .buttonStyle(.plain)
+            .disabled(patreon.isAuthenticating)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
