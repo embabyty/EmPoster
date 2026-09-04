@@ -26,6 +26,7 @@ struct SubscriptionView: View {
     private let featureRows = [
         FeatureRow(icon: "clock.badge.checkmark", text: "Disable the video duration limit"),
         FeatureRow(icon: "film.stack", text: "Apply video wallpapers without restrictions"),
+        FeatureRow(icon: "crown.fill", text: "Download Pro-only custom wallpapers"),
         FeatureRow(icon: "star.circle", text: "Support ongoing Pocket Poster development")
     ]
 
@@ -36,7 +37,7 @@ struct SubscriptionView: View {
                     header
 
                     if store.isPro {
-                        proActiveCard
+                        activeCard
                     }
 
                     featuresCard
@@ -66,13 +67,13 @@ struct SubscriptionView: View {
             .task {
                 await store.loadProducts()
                 if selectedPlan == nil {
-                    selectedPlan = store.products.first { $0.id == SubscriptionManager.Plan.yearly }
+                    selectedPlan = store.products.first { $0.id == SubscriptionManager.Plan.proYearly }
                         ?? store.products.first
                 }
             }
             .onChange(of: store.products) { products in
                 if selectedPlan == nil {
-                    selectedPlan = products.first { $0.id == SubscriptionManager.Plan.yearly }
+                    selectedPlan = products.first { $0.id == SubscriptionManager.Plan.proYearly }
                         ?? products.first
                 }
             }
@@ -109,16 +110,16 @@ struct SubscriptionView: View {
         }
     }
 
-    // MARK: - Pro Active Card
+    // MARK: - Active Card
 
-    private var proActiveCard: some View {
+    private var activeCard: some View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.title2)
                 .foregroundStyle(.green)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Pocket Poster Pro is Active")
+                Text(store.isUltra ? "Pocket Poster Ultra is Active" : "Pocket Poster Pro is Active")
                     .font(.headline)
                 if let subscription = store.currentSubscription {
                     Text("\(subscription.displayName) — \(subscription.displayPrice)")
@@ -166,8 +167,33 @@ struct SubscriptionView: View {
     // MARK: - Plans
 
     private var planCards: some View {
-        VStack(spacing: 12) {
-            ForEach(store.products) { product in
+        VStack(spacing: 20) {
+            tierSection(
+                title: "Pro",
+                subtitle: "Everything you need — video wallpapers, no duration limit, Pro wallpapers.",
+                plans: store.products.filter { SubscriptionManager.Plan.proIDs.contains($0.id) }
+            )
+
+            tierSection(
+                title: "Ultra",
+                subtitle: "The complete Pocket Poster experience — includes every Pro feature.",
+                plans: store.products.filter { SubscriptionManager.Plan.ultraIDs.contains($0.id) }
+            )
+        }
+    }
+
+    private func tierSection(title: String, subtitle: String, plans: [Product]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(plans) { product in
                 planRow(for: product)
             }
         }
@@ -175,7 +201,8 @@ struct SubscriptionView: View {
 
     private func planRow(for product: Product) -> some View {
         let isSelected = selectedPlan?.id == product.id
-        let isYearly = product.id == SubscriptionManager.Plan.yearly
+        let isYearly = product.id == SubscriptionManager.Plan.proYearly
+            || product.id == SubscriptionManager.Plan.ultraYearly
 
         return Button {
             selectedPlan = product

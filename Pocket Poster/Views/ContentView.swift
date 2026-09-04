@@ -20,6 +20,7 @@ struct ContentView: View {
     @AppStorage("pbHash") var pbHash: String = ""
     
     @ObservedObject var pbManager = PosterBoardManager.shared
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     
     private let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
     
@@ -163,11 +164,22 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing, content: {
-                    NavigationLink(destination: {
-                        SettingsView()
-                    }, label: {
-                        Image(systemName: "gear")
-                    })
+                    HStack {
+                        // MobileGestalt tweaks — subscribers only
+                        if subscriptionManager.isPro {
+                            NavigationLink(destination: {
+                                MobileGestaltView()
+                            }, label: {
+                                Image(systemName: "cpu")
+                                    .accessibilityLabel("MGA")
+                            })
+                        }
+                        NavigationLink(destination: {
+                            SettingsView()
+                        }, label: {
+                            Image(systemName: "gear")
+                        })
+                    }
                 })
             }
         }

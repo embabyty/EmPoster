@@ -8,7 +8,8 @@
 import Foundation
 import StoreKit
 
-/// Manages the "Pocket Poster Pro" auto-renewable subscriptions via StoreKit 2.
+/// Manages the "Pocket Poster Pro" and "Pocket Poster Ultra" auto-renewable
+/// subscriptions via StoreKit 2.
 ///
 /// Product IDs must match `PocketPoster.storekit` (local StoreKit testing)
 /// and, later, the App Store Connect products.
@@ -20,11 +21,17 @@ final class SubscriptionManager: ObservableObject {
     // MARK: - Product Identifiers
 
     enum Plan {
-        static let weekly = "com.mak5er.Pocket-Poster.pro.weekly"
-        static let monthly = "com.mak5er.Pocket-Poster.pro.monthly"
-        static let yearly = "com.mak5er.Pocket-Poster.pro.yearly"
+        // Pocket Poster Pro
+        static let proMonthly = "com.mak5er.Pocket-Poster.pro.monthly"
+        static let proYearly = "com.mak5er.Pocket-Poster.pro.yearly"
+        static let proIDs: [String] = [proMonthly, proYearly]
 
-        static let all: [String] = [weekly, monthly, yearly]
+        // Pocket Poster Ultra
+        static let ultraMonthly = "com.mak5er.Pocket-Poster.ultra.monthly"
+        static let ultraYearly = "com.mak5er.Pocket-Poster.ultra.yearly"
+        static let ultraIDs: [String] = [ultraMonthly, ultraYearly]
+
+        static let all: [String] = proIDs + ultraIDs
     }
 
     // MARK: - Published State
@@ -32,9 +39,15 @@ final class SubscriptionManager: ObservableObject {
     /// All subscription products, loaded from the Store.
     @Published private(set) var products: [Product] = []
 
-    /// Whether any active "Pocket Poster Pro" entitlement exists.
+    /// Whether any active "Pocket Poster Pro" entitlement exists
+    /// (Pro, or the higher Ultra tier which includes Pro).
     @Published private(set) var isPro: Bool {
         didSet { UserDefaults.standard.set(isPro, forKey: UserDefaultsKey.isPro) }
+    }
+
+    /// Whether an active "Pocket Poster Ultra" entitlement exists.
+    @Published private(set) var isUltra: Bool {
+        didSet { UserDefaults.standard.set(isUltra, forKey: UserDefaultsKey.isUltra) }
     }
 
     /// The current subscription product (if any), used to show status in the UI.
@@ -50,6 +63,7 @@ final class SubscriptionManager: ObservableObject {
 
     private enum UserDefaultsKey {
         static let isPro = "isProCached"
+        static let isUltra = "isUltraCached"
     }
 
     private var transactionUpdatesTask: Task<Void, Never>?
@@ -59,6 +73,7 @@ final class SubscriptionManager: ObservableObject {
     init() {
         // Start from the cached entitlement so the UI is correct immediately.
         self.isPro = UserDefaults.standard.bool(forKey: UserDefaultsKey.isPro)
+        self.isUltra = UserDefaults.standard.bool(forKey: UserDefaultsKey.isUltra)
 
         // Listen for transaction updates (renewals, refunds, family sharing…)
         // while the app is running.
@@ -84,7 +99,7 @@ final class SubscriptionManager: ObservableObject {
     func loadProducts() async {
         do {
             let loaded = try await Product.products(for: Plan.all)
-            // Order: weekly, monthly, yearly.
+            // Order: pro monthly, pro yearly, ultra monthly, ultra yearly.
             products = Plan.all.compactMap { id in loaded.first { $0.id == id } }
         } catch {
             lastError = error.localizedDescription
@@ -144,7 +159,7 @@ final class SubscriptionManager: ObservableObject {
 
     // MARK: - Entitlements
 
-    /// Refreshes the Pro status from the currently held entitlements.
+    /// Refreshes the Pro/Ultra status from the currently held entitlements.
     func refreshEntitlements() async {
         var subscriptionProductID: String?
 
@@ -158,6 +173,12 @@ final class SubscriptionManager: ObservableObject {
                 guard expirationDate > Date() else { continue }
             }
 
+            // Prefer Ultra when checking so it wins over Pro if both are somehow active.
+            if Plan.ultraIDs.contains(transaction.productID) {
+                subscriptionProductID = transaction.productID
+                break
+            }
+
             if Plan.all.contains(transaction.productID) {
                 subscriptionProductID = transaction.productID
                 break
@@ -165,6 +186,7 @@ final class SubscriptionManager: ObservableObject {
         }
 
         isPro = subscriptionProductID != nil
+        isUltra = subscriptionProductID.map { Plan.ultraIDs.contains($0) } ?? false
         currentSubscription = products.first { $0.id == subscriptionProductID }
     }
 
