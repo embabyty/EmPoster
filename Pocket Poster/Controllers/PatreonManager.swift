@@ -3,22 +3,29 @@
 //  EmPoster
 //
 //  Patreon-based Pro entitlement (replaces StoreKit subscriptions).
-//  The Patreon profile / OAuth app is not live yet — fill in PatreonConfig
-//  once it exists. Everything is already wired up.
+//  Only the app owner's Patreon account (ios11emiry@gmail.com) unlocks Pro.
 //
 
 import Foundation
 import UIKit
 
 enum PatreonConfig {
-    // TODO: Replace with your real values once the Patreon profile is live.
+    // TODO: Fill in the OAuth client credentials once the Patreon app exists.
 
-    /// Your Patreon creator page, e.g. https://www.patreon.com/YourName
-    static let profileURL = URL(string: "https://www.patreon.com/")!
+    /// The app owner's Patreon page.
+    static let profileURL = URL(string: "https://www.patreon.com/c/EmAppleFlagship")!
+
+    /// Only this Patreon account email can unlock EmPoster Pro.
+    static let ownerEmail = "ios11emiry@gmail.com"
 
     /// Patreon OAuth client ID (Patreon → My page → Apps & Webhooks → Create client).
     /// Leave empty to show "coming soon" instead of a broken OAuth flow.
     static let clientID = ""
+
+    /// Patreon OAuth client secret. Embedded on purpose for this personal
+    /// sideloaded app — anyone can read it, but only the owner's Patreon
+    /// account can actually unlock Pro. Rotate it if it leaks.
+    static let clientSecret = ""
 
     /// Patreon campaign ID (for verifying pledges via the API).
     static let campaignID = ""
@@ -38,7 +45,7 @@ final class PatreonManager: ObservableObject {
 
     // MARK: - Published State
 
-    /// Whether the user currently has Pro (Patreon patron active or logged in).
+    /// Whether the user currently has Pro (owner's Patreon account logged in).
     @Published private(set) var isPro: Bool {
         didSet { UserDefaults.standard.set(isPro, forKey: UserDefaultsKey.isPro) }
     }
@@ -49,6 +56,11 @@ final class PatreonManager: ObservableObject {
 
     @Published private(set) var memberName: String? {
         didSet { UserDefaults.standard.set(memberName, forKey: UserDefaultsKey.memberName) }
+    }
+
+    /// Email of the logged-in Patreon account (used for the owner check).
+    @Published private(set) var memberEmail: String? {
+        didSet { UserDefaults.standard.set(memberEmail, forKey: UserDefaultsKey.memberEmail) }
     }
 
     @Published private(set) var tier: String? {
@@ -67,6 +79,7 @@ final class PatreonManager: ObservableObject {
         static let isPro = "isProPatreon"
         static let isLoggedIn = "isLoggedInPatreon"
         static let memberName = "patreonMemberName"
+        static let memberEmail = "patreonMemberEmail"
         static let tier = "patreonTier"
     }
 
@@ -74,12 +87,13 @@ final class PatreonManager: ObservableObject {
         isPro = UserDefaults.standard.bool(forKey: UserDefaultsKey.isPro)
         isLoggedIn = UserDefaults.standard.bool(forKey: UserDefaultsKey.isLoggedIn)
         memberName = UserDefaults.standard.string(forKey: UserDefaultsKey.memberName)
+        memberEmail = UserDefaults.standard.string(forKey: UserDefaultsKey.memberEmail)
         tier = UserDefaults.standard.string(forKey: UserDefaultsKey.tier)
     }
 
-    /// True once a client ID has been configured.
+    /// True once a client ID and secret have been configured.
     var isConfigured: Bool {
-        !PatreonConfig.clientID.isEmpty
+        !PatreonConfig.clientID.isEmpty && !PatreonConfig.clientSecret.isEmpty
     }
 
     // MARK: - Subscribe
@@ -142,10 +156,10 @@ final class PatreonManager: ObservableObject {
         }
     }
 
-    /// Exchanges the OAuth code for a token and verifies the membership.
-    /// Requires a backend (or client secret) — until then, we only notify.
+    /// Exchanges the OAuth code for a token, then verifies the identity.
+    /// Pro is only granted to the owner's Patreon account.
     private func completeLogin(code: String) async {
-        guard let exchangeURL = PatreonConfig.tokenExchangeURL else {
+        guard isConfigured else {
             UIApplication.shared.alert(
                 title: "Login Not Ready",
                 body: "Patreon login isn't fully set up yet. Membership verification will be enabled when the profile goes live."
@@ -153,45 +167,132 @@ final class PatreonManager: ObservableObject {
             return
         }
 
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+
         do {
-            // TODO: POST the code to your backend:
-            //   var request = URLRequest(url: exchangeURL)
-            //   request.httpMethod = "POST"
-            //   request.httpBody = "code=\(code)&redirect_uri=\(PatreonConfig.redirectURI)".data(using: .utf8)
-            // The backend returns { "access_token": ... }.
-            // Then fetch: https://www.patreon.com/api/oauth2/v2/identity?include=memberships
-            // and check patron_status == "active_patron" for PatreonConfig.campaignID.
-            _ = exchangeURL
-            await refreshMembership(accessToken: code)
+            let accessToken: String
+            if let exchangeURL = PatreonConfig.tokenExchangeURL {
+                accessToken = try await exchangeCodeViaBackend(code: code, endpoint: exchangeURL)
+            } else {
+                accessToken = try await exchangeCodeInApp(code: code)
+            }
+            await refreshMembership(accessToken: accessToken)
         } catch {
             lastError = error.localizedDescription
             UIApplication.shared.alert(title: "Login Failed", body: error.localizedDescription)
         }
     }
 
-    /// Verifies an active pledge and updates `isPro`.
-    /// Not implemented yet — the backend/token exchange is required. Never grants
-    /// Pro without a verified entitlement.
+    /// Exchanges the code for an access token via your backend (secret stays server-side).
+    private func exchangeCodeViaBackend(code: String, endpoint: URL) async throws -> String {
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let body = "code=\(code)&redirect_uri=\(PatreonConfig.redirectURI)"
+        request.httpBody = body.data(using: .utf8)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw PatreonError.tokenExchangeFailed
+        }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = json["access_token"] as? String, !token.isEmpty else {
+            throw PatreonError.tokenExchangeFailed
+        }
+        return token
+    }
+
+    /// Exchanges the code for an access token directly (embedded client secret).
+    private func exchangeCodeInApp(code: String) async throws -> String {
+        var request = URLRequest(url: URL(string: "https://www.patreon.com/api/oauth2/token")!)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        var components = URLComponents()
+        components.queryItems = [
+            URLQueryItem(name: "grant_type", value: "authorization_code"),
+            URLQueryItem(name: "code", value: code),
+            URLQueryItem(name: "redirect_uri", value: PatreonConfig.redirectURI),
+            URLQueryItem(name: "client_id", value: PatreonConfig.clientID),
+            URLQueryItem(name: "client_secret", value: PatreonConfig.clientSecret)
+        ]
+        request.httpBody = components.query?.data(using: .utf8)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw PatreonError.tokenExchangeFailed
+        }
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = json["access_token"] as? String, !token.isEmpty else {
+            throw PatreonError.tokenExchangeFailed
+        }
+        return token
+    }
+
+    /// Fetches the logged-in Patreon identity and grants Pro only to the owner.
     func refreshMembership(accessToken: String?) async {
         guard let accessToken, !accessToken.isEmpty else { return }
 
-        // TODO: Call the Patreon API once the backend is live:
-        //   GET https://www.patreon.com/api/oauth2/v2/identity?include=memberships
-        //   Authorization: Bearer <accessToken>
-        // Then check the membership for PatreonConfig.campaignID has
-        // patron_status == "active_patron" and set:
-        //   isLoggedIn = true
-        //   isPro = true
-        //   memberName = <full_name>
-        //   tier = <tier title>
-        _ = accessToken
+        do {
+            var request = URLRequest(url: URL(string: "https://www.patreon.com/api/oauth2/v2/identity?fields%5Buser%5D=email,full_name")!)
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                throw PatreonError.identityFetchFailed
+            }
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let dataDict = json["data"] as? [String: Any],
+                  let attrs = dataDict["attributes"] as? [String: Any] else {
+                throw PatreonError.identityFetchFailed
+            }
+
+            let email = attrs["email"] as? String
+            let name = attrs["full_name"] as? String
+
+            guard let email, email.lowercased() == PatreonConfig.ownerEmail.lowercased() else {
+                lastError = "This Patreon account is not authorized for EmPoster Pro."
+                UIApplication.shared.alert(
+                    title: "Not Authorized",
+                    body: "EmPoster Pro is only available for the app owner's Patreon account."
+                )
+                return
+            }
+
+            isLoggedIn = true
+            memberEmail = email
+            memberName = name
+            tier = "Owner"
+            isPro = true
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+            UIApplication.shared.alert(title: "Login Failed", body: error.localizedDescription)
+        }
     }
 
     func logOut() {
         isPro = false
         isLoggedIn = false
         memberName = nil
+        memberEmail = nil
         tier = nil
         lastError = nil
+    }
+}
+
+/// Errors surfaced during the Patreon OAuth flow.
+enum PatreonError: LocalizedError {
+    case tokenExchangeFailed
+    case identityFetchFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .tokenExchangeFailed:
+            return "Failed to exchange the Patreon login code. Please try again."
+        case .identityFetchFailed:
+            return "Failed to verify your Patreon account. Please try again."
+        }
     }
 }
