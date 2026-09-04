@@ -10,8 +10,6 @@ import Foundation
 import UIKit
 
 enum PatreonConfig {
-    // TODO: Fill in the OAuth client credentials once the Patreon app exists.
-
     /// The app owner's Patreon page.
     static let profileURL = URL(string: "https://www.patreon.com/c/EmAppleFlagship")!
 
@@ -19,13 +17,12 @@ enum PatreonConfig {
     static let ownerEmail = "ios11emiry@gmail.com"
 
     /// Patreon OAuth client ID (Patreon → My page → Apps & Webhooks → Create client).
-    /// Leave empty to show "coming soon" instead of a broken OAuth flow.
-    static let clientID = ""
+    static let clientID = "A3WtRmw4CkNkPw1zEMvmg38GYiCn5VdtRs0v5Ej01PKT-VtMv924XIvhtwajaV_W"
 
     /// Patreon OAuth client secret. Embedded on purpose for this personal
     /// sideloaded app — anyone can read it, but only the owner's Patreon
     /// account can actually unlock Pro. Rotate it if it leaks.
-    static let clientSecret = ""
+    static let clientSecret = "gl_YYkeIu4lUhkh92x382QuxdlliGUbx0ka6q1654jx331SNoaHBO2XYSfL8QIDx"
 
     /// Patreon campaign ID (for verifying pledges via the API).
     static let campaignID = ""
