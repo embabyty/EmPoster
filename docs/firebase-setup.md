@@ -25,25 +25,13 @@ launch and enables Firebase; without it, submissions simply stay on-device
 
 In the Firebase console:
 
-- **Build → Authentication → Sign-in method**: enable **Anonymous** and
-  **Google**.
+- **Build → Authentication → Sign-in method**: enable **Anonymous**.
 - **Build → Firestore Database → Create database**: start in production or
   test mode (either is fine — rules below are applied anyway).
 - **Build → Storage → Get started**.
 
-### ⚠️ After enabling Google Sign-In, re-download the plist
-
-Enabling Google Sign-In generates an iOS OAuth client. Download
-`GoogleService-Info.plist` AGAIN and replace the one in `Pocket Poster/` —
-the new file contains the `CLIENT_ID` and `REVERSED_CLIENT_ID` keys that
-the "Sign in with Google" button needs (the current file in the repo does
-NOT have them yet).
-
-Then replace `REPLACE_WITH_REVERSED_CLIENT_ID` in
-`Pocket-Poster-Info.plist` (CFBundleURLTypes → Google OAuth) with the
-`REVERSED_CLIENT_ID` value from the new plist (looks like
-`com.googleusercontent.apps.….`). This URL scheme is required for the
-Google OAuth callback to return into the app.
+The app authenticates with Firebase **anonymously**; there is no Google
+Sign-In provider in the app, so no OAuth client or URL scheme is needed.
 
 ## 4. Publish the rules
 

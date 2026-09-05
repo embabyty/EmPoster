@@ -27,16 +27,6 @@
 				<string>pocketposter</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>Google OAuth</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.329227199636-sjnjl34gdl77m0knh38toq42075oi4g5</string>
-			</array>
-		</dict>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>

@@ -7,25 +7,17 @@
 
 import SwiftUI
 import UIKit
-import GoogleSignIn
 import FirebaseCore
 
-/// App delegate — configures Google Sign-In and forwards Google OAuth
-/// callbacks (used by the GIDSignIn SDK).
+/// App delegate — configures Firebase early so anonymous auth,
+/// Firestore, and Storage are ready as soon as the app launches.
 final class EmPosterAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        // Configure Firebase early so Google Sign-In has its client ID
+        // Configure Firebase early so it's ready for anonymous auth
         if FirebaseApp.app() == nil, Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
             FirebaseApp.configure()
         }
-        if let clientID = FirebaseApp.app()?.options.clientID {
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-        }
         return true
-    }
-
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        return GIDSignIn.sharedInstance.handle(url)
     }
 }
 
@@ -77,8 +69,6 @@ struct EmPosterApp: App {
                 }
             }
             .onOpenURL(perform: { url in
-                // Google Sign-In callback
-                if GIDSignIn.sharedInstance.handle(url) { return }
                 // Patreon OAuth callback
                 if url.absoluteString.starts(with: "pocketposter://patreon") {
                     PatreonManager.shared.handleRedirect(url)
