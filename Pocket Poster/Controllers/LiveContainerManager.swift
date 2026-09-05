@@ -20,6 +20,7 @@ enum LiveContainerError: LocalizedError {
     case missingInfoPlist(String)
     case unreadableInfoPlist(String, String)
     case missingBundleID(String)
+    case noAppInArchive(String)
     case badQueryUnavailable
     case exportFailed
     case installFailed(String)
@@ -34,6 +35,8 @@ enum LiveContainerError: LocalizedError {
             return "The app bundle at \(path) has an Info.plist that couldn't be read (\(reason)). The IPA may be corrupted or protected."
         case .missingBundleID(let path):
             return "The app bundle at \(path) has an Info.plist, but it doesn't contain a CFBundleIdentifier, so it can't be installed."
+        case .noAppInArchive(let path):
+            return "The archive at \(path) doesn't contain an app bundle (no Info.plist found inside). It may not be a real IPA, or it may be corrupted."
         case .badQueryUnavailable:
             return "bad_query is not available on this iOS version."
         case .exportFailed:
@@ -261,13 +264,46 @@ final class LiveContainerManager: ObservableObject {
             let tmp = importsURL.appendingPathComponent(UUID().uuidString, conformingTo: .directory)
             try fm.createDirectory(at: tmp, withIntermediateDirectories: true)
             defer { try? fm.removeItem(at: tmp) }
+
+            // 1) Normal bulk extraction.
+            var unzipError: Error?
             do {
                 try fm.unzipItem(at: url, to: tmp)
             } catch {
-                throw LiveContainerError.installFailed("Could not unzip the IPA: \(error.localizedDescription)")
+                unzipError = error
+                print("LiveContainer: bulk unzip failed (\(error.localizedDescription)); falling back to per-entry extraction")
             }
+
+            // 2) If the bulk extraction produced no usable bundle, open the
+            //    archive and pull just the .app folder out, entry by entry,
+            //    skipping anything weird instead of aborting.
+            if let archive = try? Archive(url: url, accessMode: .read) {
+                if Self.findAppBundle(in: tmp) == nil,
+                   let folder = Self.appFolderPath(in: archive) {
+                    let appName = (folder as NSString).lastPathComponent
+                    let dest = tmp.appendingPathComponent(appName, conformingTo: .directory)
+                    if (try? Self.extractFolder(fromArchive: archive, folderPath: folder, to: dest)) == true {
+                        print("LiveContainer: extracted app folder \(folder) entry-by-entry")
+                    }
+                }
+            }
+
             guard let app = Self.findAppBundle(in: tmp) else {
                 Self.logLayout(at: tmp, label: "Unzipped IPA contents")
+                // The zip genuinely has no app bundle inside: say so.
+                if let archive = try? Archive(url: url, accessMode: .read) {
+                    if Self.appFolderPath(in: archive) == nil {
+                        if let unzipError {
+                            throw LiveContainerError.installFailed("Could not unzip the IPA: \(unzipError.localizedDescription)")
+                        }
+                        throw LiveContainerError.noAppInArchive(url.path)
+                    }
+                }
+                // A zip with an app inside, but we couldn't materialize it on
+                // disk. Surface the extraction failure if there was one.
+                if let unzipError {
+                    throw LiveContainerError.installFailed("Could not unzip the IPA: \(unzipError.localizedDescription)")
+                }
                 throw LiveContainerError.invalidBundle
             }
             sourceBundle = app
@@ -281,7 +317,32 @@ final class LiveContainerManager: ObservableObject {
         }
 
         print("LiveContainer: resolved app bundle at \(sourceBundle.path)")
-        let info = try Self.readInfoPlistThrowing(sourceBundle)
+        var info: [String: Any]
+        do {
+            info = try Self.readInfoPlistThrowing(sourceBundle)
+        } catch {
+            // The extracted copy may be broken (e.g. conflicts during
+            // extraction). Read the plist straight out of the zip.
+            if url.pathExtension.lowercased() == "ipa" || url.pathExtension.lowercased() == "tipa" {
+                if let fromArchive = try? Self.readInfoPlistFromArchive(try? Archive(url: url, accessMode: .read)) {
+                    info = fromArchive.plist
+                    print("LiveContainer: Info.plist read from the archive directly (on-disk copy was unreadable: \(error.localizedDescription))")
+                    // Patch the broken on-disk copy with the good bytes.
+                    if let archive = try? Archive(url: url, accessMode: .read),
+                       let entry = archive.first(where: {
+                           Self.normalizedEntryPath($0.path) == Self.normalizedEntryPath(fromArchive.folder) + "info.plist"
+                       }) {
+                        let dest = sourceBundle.appendingPathComponent("Info.plist")
+                        try? fm.removeItem(at: dest)
+                        _ = try? archive.extract(entry, to: dest)
+                    }
+                } else {
+                    throw error
+                }
+            } else {
+                throw error
+            }
+        }
         guard let bundleID = info["CFBundleIdentifier"] as? String, !bundleID.isEmpty else {
             throw LiveContainerError.missingBundleID(sourceBundle.path)
         }
@@ -449,17 +510,27 @@ final class LiveContainerManager: ObservableObject {
         (try? readInfoPlistThrowing(bundleURL)) ?? [:]
     }
 
+    /// Locate the Info.plist of an app bundle: at the bundle root (iOS) or
+    /// under Contents/ (macOS bundles). Directories named Info.plist don't
+    /// count — those appear in mangled archives.
+    private static func infoPlistURL(in bundleURL: URL) -> URL? {
+        let fm = FileManager.default
+        for candidate in ["Info.plist", "Contents/Info.plist"] {
+            let url = bundleURL.appendingPathComponent(candidate)
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: url.path, isDirectory: &isDir), !isDir.boolValue {
+                return url
+            }
+        }
+        return nil
+    }
+
     /// Reads and parses an app bundle's Info.plist, throwing a specific
     /// LiveContainerError when the file is missing, unreadable, or malformed
     /// so the user gets a useful message instead of a generic import failure.
     private static func readInfoPlistThrowing(_ bundleURL: URL) throws -> [String: Any] {
-        let url = bundleURL.appendingPathComponent("Info.plist")
-        var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else {
+        guard let url = infoPlistURL(in: bundleURL) else {
             throw LiveContainerError.missingInfoPlist(bundleURL.path)
-        }
-        if isDir.boolValue {
-            throw LiveContainerError.unreadableInfoPlist(bundleURL.path, "Info.plist is a folder, not a file")
         }
         guard let data = try? Data(contentsOf: url) else {
             throw LiveContainerError.unreadableInfoPlist(bundleURL.path, "file could not be read")
@@ -488,7 +559,7 @@ final class LiveContainerManager: ObservableObject {
         }
 
         // If the root itself is an app bundle, use it.
-        if fm.fileExists(atPath: root.appendingPathComponent("Info.plist").path) {
+        if Self.infoPlistURL(in: root) != nil {
             return root
         }
 
@@ -498,7 +569,7 @@ final class LiveContainerManager: ObservableObject {
             guard isDir else { continue }
 
             if item.pathExtension.lowercased() == "app" {
-                if fm.fileExists(atPath: item.appendingPathComponent("Info.plist").path) {
+                if Self.infoPlistURL(in: item) != nil {
                     return item
                 }
             } else if item.lastPathComponent.lowercased() == "payload" && !checkedPayload {
@@ -532,6 +603,87 @@ final class LiveContainerManager: ObservableObject {
             let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
             print("LiveContainer:   \(isDir ? "[dir] " : "[file]")\(item.lastPathComponent)")
         }
+    }
+
+    // MARK: - ZIP entry helpers
+    //
+    // Reading the zip straight from its entry list is far more tolerant than
+    // extracting everything to disk first: archives with name conflicts or
+    // odd directory entries (which make unzipItem abort) still work.
+
+    /// Normalize a zip entry path: forward slashes, lowercased.
+    private static func normalizedEntryPath(_ path: String) -> String {
+        path.replacingOccurrences(of: "\\", with: "/").lowercased()
+    }
+
+    /// Find the folder path of the first ".app" bundle in a zip that has an
+    /// Info.plist at its root (or under Contents/), e.g. "Payload/Foo.app/".
+    private static func appFolderPath(in archive: Archive) -> String? {
+        for entry in archive {
+            let p = normalizedEntryPath(entry.path)
+            guard let range = p.range(of: ".app/") else { continue }
+            let folder = String(p[...range.upperBound]) // includes trailing "/"
+            let relative = String(p[range.upperBound...])
+            if relative == "info.plist" || relative == "contents/info.plist" {
+                return folder
+            }
+        }
+        return nil
+    }
+
+    /// Read an app bundle's Info.plist directly out of the zip, without
+    /// relying on the extracted files on disk.
+    private static func readInfoPlistFromArchive(_ archive: Archive?) throws -> (folder: String, plist: [String: Any]) {
+        guard let archive = archive else {
+            throw LiveContainerError.installFailed("Could not open the IPA archive.")
+        }
+        guard let folder = appFolderPath(in: archive) else {
+            throw LiveContainerError.noAppInArchive("<archive>")
+        }
+        let wanted = normalizedEntryPath(folder)
+        guard let entry = archive.first(where: {
+            let p = normalizedEntryPath($0.path)
+            return p == wanted + "info.plist" || p == wanted + "contents/info.plist"
+        }) else {
+            throw LiveContainerError.noAppInArchive("<archive>")
+        }
+        var data = Data()
+        _ = try archive.extract(entry) { data.append($0) }
+        guard let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            as? [String: Any] else {
+            throw LiveContainerError.unreadableInfoPlist(entry.path, "not a valid property list in the archive")
+        }
+        return (folder: folder, plist: plist)
+    }
+
+    /// Extract every entry under `folderPath` in the archive into
+    /// `destination`, skipping any entry that fails instead of aborting.
+    private static func extractFolder(fromArchive archive: Archive, folderPath: String, to destination: URL) throws -> Bool {
+        let fm = FileManager.default
+        let slashFolder = folderPath.replacingOccurrences(of: "\\", with: "/")
+        var extractedAny = false
+        for entry in archive {
+            let slashPath = entry.path.replacingOccurrences(of: "\\", with: "/")
+            guard slashPath.lowercased().hasPrefix(slashFolder.lowercased()) else { continue }
+            let relative = String(slashPath.dropFirst(slashFolder.count))
+            guard !relative.isEmpty else { continue }
+            let dest = destination.appendingPathComponent(relative)
+            do {
+                switch entry.type {
+                case .directory:
+                    try fm.createDirectory(at: dest, withIntermediateDirectories: true, attributes: nil)
+                case .file, .symlink:
+                    if fm.fileExists(atPath: dest.path) {
+                        try? fm.removeItem(at: dest)
+                    }
+                    _ = try archive.extract(entry, to: dest)
+                }
+                extractedAny = true
+            } catch {
+                print("LiveContainer: skipped bad zip entry \(entry.path): \(error.localizedDescription)")
+            }
+        }
+        return extractedAny
     }
 
     private static func sanitize(_ string: String) -> String {
