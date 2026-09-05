@@ -14,10 +14,6 @@ struct RootView: View {
                 .tabItem {
                     Label("Home", systemImage: "house")
                 }
-            DaemonsView()
-                .tabItem {
-                    Label("Daemons", systemImage: "gearshape.2")
-                }
             if CarPlayManager.supportsCarPlay() {
                 CarPlayView()
                     .tabItem {
