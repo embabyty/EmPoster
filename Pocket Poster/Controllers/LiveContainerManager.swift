@@ -717,7 +717,7 @@ final class LiveContainerManager: ObservableObject {
     /// Upper bound for a single entry we're willing to materialize. Real app
     /// bundles never approach this; a corrupt archive can declare absurd
     /// sizes that would make ZIPFoundation try to allocate gigabytes (crash).
-    private static let maxExtractedEntrySize: Int64 = 1 << 30 // 1 GiB
+    private static let maxExtractedEntrySize: UInt64 = 1 << 30 // 1 GiB
 
     /// Extract every entry of an archive into `destination`, skipping anything
     /// dangerous or broken instead of aborting (or crashing) — the same
@@ -736,7 +736,7 @@ final class LiveContainerManager: ObservableObject {
             // Reject path traversal and build the destination one component
             // at a time (appending the raw string percent-encodes the "/").
             let slashPath = entry.path.replacingOccurrences(of: "\\", with: "/")
-            guard let components = safeRelativeComponents(slashPath) else {
+            guard let components = safeRelativeComponents(slashPath), !components.isEmpty else {
                 print("LiveContainer: skipped entry with unsafe path \(entry.path)")
                 continue
             }
