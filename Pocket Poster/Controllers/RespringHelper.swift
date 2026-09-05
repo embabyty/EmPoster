@@ -38,7 +38,7 @@ enum RespringHelper {
     </script></body></html>
     """
     
-    /// Instant full respring (Mond path). Safe under LiveContainer.
+    /// Instant full respring (Mond path).
     static func respring() {
         #if targetEnvironment(simulator)
         print("respring skipped on simulator")
@@ -110,15 +110,11 @@ enum RespringHelper {
         webView.setNeedsLayout()
         webView.layoutIfNeeded()
         
-        // Re-load once more after attach (some LC builds only execute JS after in-hierarchy)
+        // Re-load once more after attach so WebKit definitely executes the JS
         webView.loadHTMLString(crashHTML, baseURL: nil)
         
-        // 4) Outside LiveContainer, also hit XPC immediately (no delay)
-        let inLC = ProcessInfo.processInfo.environment["LC_HOME_PATH"] != nil
-            || Bundle.main.bundlePath.contains("LiveContainer")
-        if !inLC {
-            restartFrontboard()
-            restartBackboard()
-        }
+        // 4) Hit XPC immediately (no delay)
+        restartFrontboard()
+        restartBackboard()
     }
 }

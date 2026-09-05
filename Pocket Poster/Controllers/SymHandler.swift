@@ -15,23 +15,15 @@ class SymHandler {
         return documentsDirectory
     }
     
-    static func getLCDocumentsDirectory() -> URL {
-        let lcPath = ProcessInfo.processInfo.environment["LC_HOME_PATH"]
-        if let lcPath = lcPath {
-            return URL(fileURLWithPath: "\(lcPath)/Documents")
-        }
-        return getDocumentsDirectory()
-    }
-    
     static func getPosterBoardHashURL() -> URL {
-        return getLCDocumentsDirectory().appendingPathComponent("NuggetPosterBoardHash")
+        return getDocumentsDirectory().appendingPathComponent("NuggetPosterBoardHash")
     }
     static func getCarPlayHashURL() -> URL {
-        return getLCDocumentsDirectory().appendingPathComponent("NuggetCarPlayWallpaperHash")
+        return getDocumentsDirectory().appendingPathComponent("NuggetCarPlayWallpaperHash")
     }
     
     private static func getSymlinkURL() -> URL {
-        return getLCDocumentsDirectory().appendingPathComponent(".Trash", conformingTo: .symbolicLink)
+        return getDocumentsDirectory().appendingPathComponent(".Trash", conformingTo: .symbolicLink)
     }
     
     /// Prefer bad_query (iOS 26/27 sandbox escape); fall back to .Trash symlink exploit.

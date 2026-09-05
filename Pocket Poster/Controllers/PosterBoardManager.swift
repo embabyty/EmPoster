@@ -326,8 +326,7 @@ class PosterBoardManager: ObservableObject {
         SymHandler.cleanup()
         let docDir = SymHandler.getDocumentsDirectory()
         for file in try FileManager.default.contentsOfDirectory(at: docDir, includingPropertiesForKeys: nil) {
-            // Keep the LiveContainer app container (user-installed apps) too.
-            if file.lastPathComponent != "CarPlayPhotos" && file.lastPathComponent != LiveContainerManager.storageFolderName {
+            if file.lastPathComponent != "CarPlayPhotos" {
                 try FileManager.default.removeItem(at: file)
             }
         }

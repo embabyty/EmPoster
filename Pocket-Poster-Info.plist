@@ -14,23 +14,6 @@
 				<string>com.mak5er.tendies</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>iOS App Archive</string>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.apple.itunes.ipa</string>
-				<string>com.embabyty.ipa</string>
-			</array>
-		</dict>
-	</array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>livecontainer</string>
-		<string>livecontainer2</string>
-		<string>livecontainer3</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -92,24 +75,6 @@
 				</array>
 				<key>public.mime-type</key>
 				<array/>
-			</dict>
-		</dict>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-				<string>public.archive</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>iOS App Archive</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.embabyty.ipa</string>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>ipa</string>
-				</array>
 			</dict>
 		</dict>
 	</array>
