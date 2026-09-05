@@ -9,10 +9,6 @@
 /* Begin PBXBuildFile section */
 		6F09B7BB2DEB873F00CDE89C /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 6F09B7BA2DEB873F00CDE89C /* ZIPFoundation */; };
 		6F09BA332E00808300CDE89C /* Dynamic in Frameworks */ = {isa = PBXBuildFile; productRef = 6F09BA322E00808300CDE89C /* Dynamic */; };
-		6FB105552E26D3EC00185A5C /* CachedAsyncImage in Frameworks */ = {isa = PBXBuildFile; productRef = 6FB105542E26D3EC00185A5C /* CachedAsyncImage */; };
-		FB0000012DEB0000000000A5 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000012DEB0000000000A2 /* FirebaseAuth */; };
-		FB0000012DEB0000000000A6 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000012DEB0000000000A3 /* FirebaseFirestore */; };
-		FB0000012DEB0000000000A7 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000012DEB0000000000A4 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,12 +47,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6FB105552E26D3EC00185A5C /* CachedAsyncImage in Frameworks */,
 				6F09BA332E00808300CDE89C /* Dynamic in Frameworks */,
 				6F09B7BB2DEB873F00CDE89C /* ZIPFoundation in Frameworks */,
-				FB0000012DEB0000000000A5 /* FirebaseAuth in Frameworks */,
-				FB0000012DEB0000000000A6 /* FirebaseFirestore in Frameworks */,
-				FB0000012DEB0000000000A7 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,10 +94,6 @@
 			packageProductDependencies = (
 				6F09B7BA2DEB873F00CDE89C /* ZIPFoundation */,
 				6F09BA322E00808300CDE89C /* Dynamic */,
-				6FB105542E26D3EC00185A5C /* CachedAsyncImage */,
-				FB0000012DEB0000000000A2 /* FirebaseAuth */,
-				FB0000012DEB0000000000A3 /* FirebaseFirestore */,
-				FB0000012DEB0000000000A4 /* FirebaseStorage */,
 			);
 			productName = "Pocket Poster";
 			productReference = 6F09B79D2DEB694B00CDE89C /* Pocket Poster.app */;
@@ -138,8 +126,6 @@
 			packageReferences = (
 				6F09B7B92DEB873F00CDE89C /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				6F09BA312E00808300CDE89C /* XCRemoteSwiftPackageReference "Dynamic" */,
-				6FB105532E26D3EC00185A5C /* XCRemoteSwiftPackageReference "swiftui-cached-async-image" */,
-				FB0000012DEB0000000000A1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6F09B79E2DEB694B00CDE89C /* Products */;
@@ -407,22 +393,6 @@
 				minimumVersion = 1.2.0;
 			};
 		};
-		6FB105532E26D3EC00185A5C /* XCRemoteSwiftPackageReference "swiftui-cached-async-image" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/lorenzofiamingo/swiftui-cached-async-image";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.1.1;
-			};
-		};
-		FB0000012DEB0000000000A1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 11.0.0;
-			};
-		};
 		/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -435,26 +405,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 6F09BA312E00808300CDE89C /* XCRemoteSwiftPackageReference "Dynamic" */;
 			productName = Dynamic;
-		};
-		6FB105542E26D3EC00185A5C /* CachedAsyncImage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6FB105532E26D3EC00185A5C /* XCRemoteSwiftPackageReference "swiftui-cached-async-image" */;
-			productName = CachedAsyncImage;
-		};
-		FB0000012DEB0000000000A2 /* FirebaseAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FB0000012DEB0000000000A1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAuth;
-		};
-		FB0000012DEB0000000000A3 /* FirebaseFirestore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FB0000012DEB0000000000A1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFirestore;
-		};
-		FB0000012DEB0000000000A4 /* FirebaseStorage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = FB0000012DEB0000000000A1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseStorage;
 		};
 		/* End XCSwiftPackageProductDependency section */
 	};

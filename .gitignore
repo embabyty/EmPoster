@@ -1,1 +1,4 @@
 /build
+
+# Pocket Poster proxy server (entire folder is ignored)
+server/

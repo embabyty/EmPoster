@@ -60,8 +60,8 @@ struct ExploreView: View {
     private func submissionCard(_ submission: TendieSubmission) -> some View {
         VStack(spacing: 0) {
             TendiePreviewImage(
-                storagePath: community.firebaseAvailable ? submission.previewPath : nil,
-                storedFileName: community.firebaseAvailable ? nil : submission.tendieFiles.first
+                previewURL: submission.isRemote ? ServerConfig.previewURL(id: submission.id) : nil,
+                storedFileName: submission.isRemote ? nil : submission.tendieFiles.first
             )
             .aspectRatio(9 / 16.0, contentMode: .fit)
             .frame(maxWidth: .infinity)
@@ -133,8 +133,8 @@ struct ExploreView: View {
             do {
                 for file in submission.tendieFiles {
                     let newURL: URL
-                    if community.firebaseAvailable {
-                        newURL = try await DownloadManager.shared.downloadTendie(storagePath: file)
+                    if submission.isRemote, let url = ServerConfig.tendieURL(id: submission.id, fileName: file) {
+                        newURL = try await DownloadManager.shared.downloadFromURL(url)
                     } else {
                         newURL = try DownloadManager.shared.copyTendies(from: community.localTendieURL(forStoredFile: file))
                     }

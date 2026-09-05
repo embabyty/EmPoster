@@ -8,16 +8,15 @@
 //  Users submit tendies in the Create tab; they only appear in Explore
 //  after an admin/staff member approves them.
 //
-//  Backend: Firebase (Firestore + Storage) when configured. Without a
-//  GoogleService-Info.plist everything falls back to local storage so
-//  the app keeps working.
+//  Backend: the Pocket Poster proxy server (see server/ in the repo).
+//  Submissions and files are uploaded to the server when a session exists;
+//  if the server is unreachable, everything falls back to local storage so
+//  the app keeps working on-device.
 //
 
 import Foundation
 import UIKit
 import ZIPFoundation
-import FirebaseFirestore
-import FirebaseStorage
 
 // MARK: - Model
 
@@ -26,17 +25,19 @@ struct TendieSubmission: Identifiable, Codable {
     var title: String
     var description: String
     var tags: [String]
-    /// Either local file names (offline mode) or Firebase Storage paths
-    /// (Firebase mode) of the tendie wallpaper files.
+    /// Local file names (inside the community store directory) when the
+    /// submission is local-only, or server file names when it is remote.
     var tendieFiles: [String]
-    /// Firebase Storage path of the preview thumbnail (Firebase mode only).
-    var previewPath: String?
+    /// File name of the preview image on the server (remote submissions only).
+    var previewFile: String?
     /// Patreon account that submitted the wallpaper (or "Anonymous").
     var authorName: String
     var authorEmail: String?
     var status: Status = .pending
     var createdAt: Date = Date()
     var decidedAt: Date?
+    /// True when this submission lives on the proxy server.
+    var isRemote: Bool = false
 
     enum Status: String, Codable {
         case pending
@@ -73,7 +74,6 @@ final class CommunityManager: ObservableObject {
     static let shared = CommunityManager()
 
     @Published private(set) var submissions: [TendieSubmission] = []
-    @Published private(set) var syncError: String?
 
     /// Approved submissions, newest first. These are shown in Explore.
     var approved: [TendieSubmission] {
@@ -89,32 +89,24 @@ final class CommunityManager: ObservableObject {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
-    /// Whether the logged-in Patreon account may approve/reject requests.
+    /// Whether the logged-in account may approve/reject requests.
+    /// Prefers the server's verdict; falls back to the local email list.
     var isAdmin: Bool {
+        if PatreonManager.shared.isAdmin { return true }
         guard let email = PatreonManager.shared.memberEmail?.lowercased() else { return false }
         return CommunityConfig.adminEmails.contains(email)
     }
 
-    var firebaseAvailable: Bool {
-        FirebaseManager.shared.isConfigured
-    }
-
-    private var listener: ListenerRegistration?
     private var cacheURL: URL {
         communityStoreDirectory().appendingPathComponent("submissions.json")
     }
 
     private init() {
         loadCache()
-        Task {
-            await FirebaseManager.shared.ensureSignedIn()
-            if FirebaseManager.shared.isConfigured {
-                attachListener()
-            }
-        }
+        Task { await refreshFromServer() }
     }
 
-    // MARK: - Cache (offline fallback + instant UI)
+    // MARK: - Cache
 
     func loadCache() {
         guard let data = try? Data(contentsOf: cacheURL),
@@ -130,51 +122,40 @@ final class CommunityManager: ObservableObject {
         }
     }
 
-    // MARK: - Firestore sync
+    // MARK: - Server sync
 
-    private func attachListener() {
-        let ref = FirebaseManager.shared.db.collection("submissions")
-        listener = ref.addSnapshotListener { [weak self] snapshot, error in
-            guard let self else { return }
-            if let error {
-                self.syncError = error.localizedDescription
-                return
+    /// Pulls the approved feed (and the pending queue for admins) from the
+    /// server and merges it with any local-only submissions.
+    func refreshFromServer() async {
+        if let token = PatreonManager.shared.sessionToken, PatreonManager.shared.isAdmin {
+            do {
+                async let approved = ServerAPI.fetchApproved()
+                async let pending = ServerAPI.fetchPending(token: token)
+                let (a, p) = try await (approved, pending)
+                mergeRemote(a + p)
+                saveCache()
+            } catch {
+                print("Community server refresh failed: \(error.localizedDescription)")
             }
-            self.syncError = nil
-            guard let docs = snapshot?.documents else { return }
-
-            self.submissions = docs.compactMap { doc in
-                Self.decode(from: doc.data(), id: doc.documentID)
+        } else {
+            do {
+                let approved = try await ServerAPI.fetchApproved()
+                mergeRemote(approved)
+                saveCache()
+            } catch {
+                print("Community server refresh failed: \(error.localizedDescription)")
             }
-            self.saveCache()
         }
     }
 
-    /// Converts a Firestore document into a submission model.
-    private static func decode(from data: [String: Any], id: String) -> TendieSubmission? {
-        guard let title = data["title"] as? String,
-              let statusRaw = data["status"] as? String,
-              let status = TendieSubmission.Status(rawValue: statusRaw) else { return nil }
-
-        let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
-        let decidedAt = (data["decidedAt"] as? Timestamp)?.dateValue()
-
-        return TendieSubmission(
-            id: id,
-            title: title,
-            description: data["description"] as? String ?? "",
-            tags: data["tags"] as? [String] ?? [],
-            tendieFiles: data["tendieFiles"] as? [String] ?? [],
-            previewPath: data["previewPath"] as? String,
-            authorName: data["authorName"] as? String ?? "Anonymous",
-            authorEmail: data["authorEmail"] as? String,
-            status: status,
-            createdAt: createdAt,
-            decidedAt: decidedAt
-        )
+    /// Replaces remote submissions with freshly fetched ones, keeping any
+    /// local-only submissions (created while the server was unreachable).
+    private func mergeRemote(_ remote: [TendieSubmission]) {
+        submissions.removeAll { $0.isRemote }
+        submissions.append(contentsOf: remote)
     }
 
-    // MARK: - Tendie storage (offline mode)
+    // MARK: - Tendie storage
 
     /// Copies an imported tendie file into the community submissions folder
     /// and returns its stored file name.
@@ -189,38 +170,47 @@ final class CommunityManager: ObservableObject {
         return name
     }
 
-    /// Resolves a stored file name (offline mode) to its local URL.
+    /// Resolves a stored file name to its local URL.
     func localTendieURL(forStoredFile name: String) -> URL {
         communityStoreDirectory().appendingPathComponent(name)
     }
 
     // MARK: - Submission actions
 
-    /// Submits a wallpaper request. Uploads to Firebase when configured,
-    /// otherwise stores locally. Either way the status starts as pending
-    /// and nothing is published until an admin approves it.
+    /// Submits a wallpaper request. Uploads it to the server when a session
+    /// exists; otherwise stores it locally. Either way the status starts as
+    /// pending and nothing is published until an admin approves it.
     func submit(title: String, description: String, tags: [String], tendieFiles: [String]) async {
         let patreon = PatreonManager.shared
-        let firebase = FirebaseManager.shared
+        let authorName = patreon.memberName ?? "Anonymous"
+        let authorEmail = patreon.memberEmail
 
-        // Prefer the Patreon account; fall back to the Google account.
-        let authorName = patreon.memberName ?? firebase.currentUserName ?? "Anonymous"
-        let authorEmail = patreon.memberEmail ?? firebase.currentUserEmail
-
-        if FirebaseManager.shared.isConfigured {
+        if let token = patreon.sessionToken {
             do {
-                try await uploadAndSubmit(
+                // Best-effort preview thumbnail built from the first tendie.
+                var preview: Data?
+                if let first = tendieFiles.first {
+                    let image = await Task.detached(priority: .utility) {
+                        CommunityPreviewStore.image(forStoredFile: first)
+                    }.value
+                    preview = image.flatMap { CommunityPreviewStore.thumbnailJPEG(from: $0) }
+                }
+
+                let remote = try await ServerAPI.submit(
+                    token: token,
                     title: title,
                     description: description,
                     tags: tags,
-                    localFiles: tendieFiles,
                     authorName: authorName,
-                    authorEmail: authorEmail
+                    localFiles: tendieFiles,
+                    preview: preview
                 )
+                submissions.insert(remote, at: 0)
+                saveCache()
                 return
             } catch {
-                syncError = error.localizedDescription
-                // fall through to local-only submission so the user never loses their work
+                // Fall through to local-only submission so the user never loses their work.
+                print("Server submit failed, keeping local: \(error.localizedDescription)")
             }
         }
 
@@ -230,7 +220,6 @@ final class CommunityManager: ObservableObject {
             description: description,
             tags: tags,
             tendieFiles: tendieFiles,
-            previewPath: nil,
             authorName: authorName,
             authorEmail: authorEmail
         )
@@ -238,89 +227,30 @@ final class CommunityManager: ObservableObject {
         saveCache()
     }
 
-    private func uploadAndSubmit(title: String, description: String, tags: [String], localFiles: [String], authorName: String, authorEmail: String?) async throws {
-        let fb = FirebaseManager.shared
-        let docRef = fb.db.collection("submissions").document()
-        let docID = docRef.documentID
-
-        // 1. Upload the tendie files
-        var storagePaths: [String] = []
-        for localName in localFiles {
-            let path = "submissions/\(docID)/\(UUID().uuidString).tendies"
-            let localURL = localTendieURL(forStoredFile: localName)
-            try await fb.uploadFile(from: localURL, to: path)
-            storagePaths.append(path)
-        }
-
-        // 2. Upload a preview thumbnail (best-effort)
-        var previewPath: String?
-        if let first = localFiles.first,
-           let image = await Task.detached(priority: .utility, operation: {
-               CommunityPreviewStore.image(forStoredFile: first)
-           }).value,
-           let jpeg = CommunityPreviewStore.thumbnailJPEG(from: image) {
-            let path = "submissions/\(docID)/preview.jpg"
-            try? await fb.uploadData(jpeg, to: path)
-            previewPath = path
-        }
-
-        // 3. Create the Firestore document (pending)
-        var data: [String: Any] = [
-            "title": title,
-            "description": description,
-            "tags": tags,
-            "tendieFiles": storagePaths,
-            "authorName": authorName,
-            "status": TendieSubmission.Status.pending.rawValue,
-            "createdAt": FieldValue.serverTimestamp()
-        ]
-        if let authorEmail { data["authorEmail"] = authorEmail }
-        if let previewPath { data["previewPath"] = previewPath }
-        try await docRef.setData(data)
-
-        // 4. Mirror locally so the queue/UI updates instantly
-        let mirror = TendieSubmission(
-            id: docID,
-            title: title,
-            description: description,
-            tags: tags,
-            tendieFiles: storagePaths,
-            previewPath: previewPath,
-            authorName: authorName,
-            authorEmail: authorEmail,
-            status: .pending,
-            createdAt: Date()
-        )
-        submissions.insert(mirror, at: 0)
-        saveCache()
-    }
-
-    /// Approves a pending submission (admin only). Syncs to Firestore.
+    /// Approves a pending submission (admin only). Syncs to the server.
     func approve(_ submission: TendieSubmission) {
-        updateStatus(submission, to: .approved)
+        setStatus(submission, to: .approved)
     }
 
-    /// Rejects a pending submission (admin only). Syncs to Firestore.
+    /// Rejects a pending submission (admin only). Syncs to the server.
     func reject(_ submission: TendieSubmission) {
-        updateStatus(submission, to: .rejected)
+        setStatus(submission, to: .rejected)
     }
 
-    private func updateStatus(_ submission: TendieSubmission, to status: TendieSubmission.Status) {
+    private func setStatus(_ submission: TendieSubmission, to status: TendieSubmission.Status) {
         guard isAdmin else { return }
 
         // Local mirror first
         mutate(submission.id) { $0.status = status; $0.decidedAt = Date() }
 
-        // Sync to Firestore
-        if FirebaseManager.shared.isConfigured {
-            let db = FirebaseManager.shared.db
-            db.collection("submissions").document(submission.id).updateData([
-                "status": status.rawValue,
-                "decidedAt": FieldValue.serverTimestamp()
-            ]) { [weak self] error in
-                if let error {
-                    self?.syncError = error.localizedDescription
-                }
+        // Sync to the server if it came from there
+        guard submission.isRemote, let token = PatreonManager.shared.sessionToken else { return }
+        Task {
+            do {
+                let updated = try await ServerAPI.setStatus(id: submission.id, token: token, approve: status == .approved)
+                mutate(updated.id) { $0.status = updated.status; $0.decidedAt = updated.decidedAt }
+            } catch {
+                print("Failed to sync status: \(error.localizedDescription)")
             }
         }
     }
@@ -380,7 +310,7 @@ enum CommunityPreviewStore {
         return best
     }
 
-    /// Downscales an image to a small JPEG for upload (Storage previews).
+    /// Downscales an image to a small JPEG for the server preview upload.
     static func thumbnailJPEG(from image: UIImage, maxDimension: CGFloat = 512) -> Data? {
         let longest = max(image.size.width, image.size.height)
         guard longest > 0 else { return nil }

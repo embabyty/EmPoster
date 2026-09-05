@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage("pbHash") var pbHash: String = "" // PosterBoard hash
     @AppStorage("cpHash") var cpHash: String = "" // CarPlay hash
     @AppStorage("ignoreDurationLimit") var ignoreDurationLimit: Bool = false
+    @AppStorage("serverBaseURL") var serverBaseURL: String = ""
     
     @ObservedObject private var patreonManager = PatreonManager.shared
     
@@ -97,7 +98,21 @@ struct SettingsView: View {
             .sheet(isPresented: $showSubscriptionSheet) {
                 SubscriptionView()
             }
-            
+
+            // MARK: Proxy server
+            Section {
+                TextField("Server URL", text: $serverBaseURL)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .font(.system(.body, design: .monospaced))
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                Text("Your Pocket Poster server, e.g. http://192.168.1.50:3000. Used for Patreon login and community wallpapers. Save & restart the app after changing it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Label("Proxy Server", systemImage: "server.rack")
+            }
+
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                     TextField("Enter PosterBoard App Hash", text: $pbHash)

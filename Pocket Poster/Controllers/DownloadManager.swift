@@ -90,17 +90,4 @@ class DownloadManager: ObservableObject {
         try FileManager.default.copyItem(at: url, to: newURL)
         return newURL
     }
-
-    /// Downloads a tendie from Firebase Storage into the collections folder.
-    func downloadTendie(storagePath: String) async throws -> URL {
-        let url = try await FirebaseManager.shared.downloadURL(forPath: storagePath)
-        let (data, response) = try await URLSession.shared.data(from: url)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw URLError(.cannotConnectToHost)
-        }
-        let fileName = storagePath.split(separator: "/").last.map(String.init) ?? UUID().uuidString
-        let newURL = PosterBoardManager.shared.getTendiesStoreURL().appendingPathComponent(fileName)
-        try data.write(to: newURL)
-        return newURL
-    }
 }

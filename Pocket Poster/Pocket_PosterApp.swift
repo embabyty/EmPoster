@@ -7,24 +7,9 @@
 
 import SwiftUI
 import UIKit
-import FirebaseCore
-
-/// App delegate — configures Firebase early so anonymous auth,
-/// Firestore, and Storage are ready as soon as the app launches.
-final class EmPosterAppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        // Configure Firebase early so it's ready for anonymous auth
-        if FirebaseApp.app() == nil, Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
-            FirebaseApp.configure()
-        }
-        return true
-    }
-}
 
 @main
 struct EmPosterApp: App {
-    @UIApplicationDelegateAdaptor(EmPosterAppDelegate.self) var appDelegate
-
     // Prefs
     @ObservedObject var dlManager = DownloadManager.shared
     

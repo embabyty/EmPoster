@@ -5,37 +5,38 @@
 //  Created by lemin on 9/5/25.
 //
 //  Best-effort preview thumbnail for a tendie wallpaper.
-//  - `storagePath`: Firebase Storage path (online mode) — downloads via
-//    a Storage download URL and renders with CachedAsyncImage.
+//  - `previewURL`: served by the proxy server (remote submissions) —
+//    rendered with AsyncImage.
 //  - `storedFileName`: local file in the community store (offline mode) —
 //    extracts the largest image from the tendie zip.
 //
 
 import SwiftUI
 import UIKit
-import CachedAsyncImage
 
 struct TendiePreviewImage: View {
+    var previewURL: URL?
     var storedFileName: String?
-    var storagePath: String?
 
     @State private var image: UIImage?
-    @State private var previewURL: URL?
 
     var body: some View {
         Group {
-            if let storagePath {
-                if let previewURL {
-                    CachedAsyncImage(url: previewURL, urlCache: .imageCache) { image in
-                        image
+            if let previewURL {
+                AsyncImage(url: previewURL) { phase in
+                    switch phase {
+                    case .success(let loaded):
+                        loaded
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } placeholder: {
+                    case .failure:
+                        placeholder
+                    case .empty:
+                        ProgressView()
+                    @unknown default:
                         placeholder
                     }
-                } else {
-                    placeholder
                 }
             } else if let image {
                 Image(uiImage: image)
@@ -48,10 +49,6 @@ struct TendiePreviewImage: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.gray.opacity(0.15))
-        .task(id: storagePath) {
-            guard let storagePath else { return }
-            previewURL = try? await FirebaseManager.shared.downloadURL(forPath: storagePath)
-        }
         .task(id: storedFileName) {
             guard let storedFileName else {
                 image = nil

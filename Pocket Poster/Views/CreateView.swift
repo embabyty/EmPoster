@@ -84,14 +84,6 @@ struct CreateView: View {
                     }
                 }
 
-                if !community.firebaseAvailable {
-                    Section {
-                        Label("Firebase is not configured — submissions stay on this device only. Add a GoogleService-Info.plist to sync them across devices.", systemImage: "exclamationmark.triangle")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
-                }
-
                 // MARK: Moderation (admins only)
                 if community.isAdmin && !community.pending.isEmpty {
                     Section {
