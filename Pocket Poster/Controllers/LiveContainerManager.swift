@@ -18,6 +18,8 @@ import ZIPFoundation
 enum LiveContainerError: LocalizedError {
     case invalidBundle
     case missingInfoPlist(String)
+    case unreadableInfoPlist(String, String)
+    case missingBundleID(String)
     case badQueryUnavailable
     case exportFailed
     case installFailed(String)
@@ -27,7 +29,11 @@ enum LiveContainerError: LocalizedError {
         case .invalidBundle:
             return "That doesn't look like an app package. Share an .ipa or .app with an app bundle inside."
         case .missingInfoPlist(let path):
-            return "The app bundle at \(path) has no readable Info.plist. Make sure you selected an .ipa or .app that contains a real app."
+            return "Found an app bundle at \(path), but it has no Info.plist file. Make sure you selected an .ipa or .app that contains a real app."
+        case .unreadableInfoPlist(let path, let reason):
+            return "The app bundle at \(path) has an Info.plist that couldn't be read (\(reason)). The IPA may be corrupted or protected."
+        case .missingBundleID(let path):
+            return "The app bundle at \(path) has an Info.plist, but it doesn't contain a CFBundleIdentifier, so it can't be installed."
         case .badQueryUnavailable:
             return "bad_query is not available on this iOS version."
         case .exportFailed:
@@ -261,21 +267,23 @@ final class LiveContainerManager: ObservableObject {
                 throw LiveContainerError.installFailed("Could not unzip the IPA: \(error.localizedDescription)")
             }
             guard let app = Self.findAppBundle(in: tmp) else {
+                Self.logLayout(at: tmp, label: "Unzipped IPA contents")
                 throw LiveContainerError.invalidBundle
             }
             sourceBundle = app
         } else {
             // Raw .app folder (or a folder containing one) picked from Files.
             guard let app = Self.findAppBundle(in: url) else {
+                Self.logLayout(at: url, label: "Picked app folder contents")
                 throw LiveContainerError.invalidBundle
             }
             sourceBundle = app
         }
 
         print("LiveContainer: resolved app bundle at \(sourceBundle.path)")
-        let info = Self.readInfoPlist(sourceBundle)
+        let info = try Self.readInfoPlistThrowing(sourceBundle)
         guard let bundleID = info["CFBundleIdentifier"] as? String, !bundleID.isEmpty else {
-            throw LiveContainerError.missingInfoPlist(sourceBundle.path)
+            throw LiveContainerError.missingBundleID(sourceBundle.path)
         }
         let name = (info["CFBundleDisplayName"] as? String)
             ?? (info["CFBundleName"] as? String)
@@ -438,15 +446,33 @@ final class LiveContainerManager: ObservableObject {
     }
 
     private static func readInfoPlist(_ bundleURL: URL) -> [String: Any] {
+        (try? readInfoPlistThrowing(bundleURL)) ?? [:]
+    }
+
+    /// Reads and parses an app bundle's Info.plist, throwing a specific
+    /// LiveContainerError when the file is missing, unreadable, or malformed
+    /// so the user gets a useful message instead of a generic import failure.
+    private static func readInfoPlistThrowing(_ bundleURL: URL) throws -> [String: Any] {
         let url = bundleURL.appendingPathComponent("Info.plist")
-        guard FileManager.default.fileExists(atPath: url.path) else { return [:] }
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else {
+            throw LiveContainerError.missingInfoPlist(bundleURL.path)
+        }
+        if isDir.boolValue {
+            throw LiveContainerError.unreadableInfoPlist(bundleURL.path, "Info.plist is a folder, not a file")
+        }
+        guard let data = try? Data(contentsOf: url) else {
+            throw LiveContainerError.unreadableInfoPlist(bundleURL.path, "file could not be read")
+        }
         // PropertyListSerialization handles both XML and binary Info.plists.
-        if let data = try? Data(contentsOf: url),
-           let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+        if let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
             as? [String: Any] {
             return plist
         }
-        return NSDictionary(contentsOfFile: url.path) as? [String: Any] ?? [:]
+        if let plist = NSDictionary(contentsOfFile: url.path) as? [String: Any] {
+            return plist
+        }
+        throw LiveContainerError.unreadableInfoPlist(bundleURL.path, "not a valid property list")
     }
 
     /// Locate the .app bundle (a directory with an Info.plist) inside a zip
@@ -488,6 +514,24 @@ final class LiveContainerManager: ObservableObject {
             return findAppBundle(in: appDirs[0])
         }
         return nil
+    }
+
+    /// Print a shallow tree of an extracted/picked folder so import failures
+    /// can be debugged from the console log.
+    private static func logLayout(at root: URL, label: String) {
+        print("LiveContainer: \(label) at \(root.path)")
+        guard let items = try? FileManager.default.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: .skipsHiddenFiles
+        ) else {
+            print("LiveContainer:   (could not list contents)")
+            return
+        }
+        for item in items {
+            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            print("LiveContainer:   \(isDir ? "[dir] " : "[file]")\(item.lastPathComponent)")
+        }
     }
 
     private static func sanitize(_ string: String) -> String {
