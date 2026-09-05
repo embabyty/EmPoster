@@ -14,9 +14,9 @@ struct RootView: View {
                 .tabItem {
                     Label("Home", systemImage: "house")
                 }
-            VideoView()
+            DaemonsView()
                 .tabItem {
-                    Label("Videos", systemImage: "camera")
+                    Label("Daemons", systemImage: "gearshape.2")
                 }
             if CarPlayManager.supportsCarPlay() {
                 CarPlayView()
@@ -24,10 +24,6 @@ struct RootView: View {
                         Label("CarPlay", systemImage: "car")
                     }
             }
-            AppsView()
-                .tabItem {
-                    Label("Apps", systemImage: "app.badge")
-                }
             ExploreView()
                 .tabItem {
                     Label("Explore", systemImage: "safari")
