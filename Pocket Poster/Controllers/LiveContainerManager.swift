@@ -17,7 +17,7 @@ import ZIPFoundation
 
 enum LiveContainerError: LocalizedError {
     case invalidBundle
-    case missingInfoPlist
+    case missingInfoPlist(String)
     case badQueryUnavailable
     case exportFailed
     case installFailed(String)
@@ -25,9 +25,9 @@ enum LiveContainerError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidBundle:
-            return "This is not a valid app bundle. Import an .ipa or an .app."
-        case .missingInfoPlist:
-            return "The app bundle has no Info.plist."
+            return "That doesn't look like an app package. Share an .ipa or .app with an app bundle inside."
+        case .missingInfoPlist(let path):
+            return "The app bundle at \(path) has no readable Info.plist. Make sure you selected an .ipa or .app that contains a real app."
         case .badQueryUnavailable:
             return "bad_query is not available on this iOS version."
         case .exportFailed:
@@ -249,33 +249,33 @@ final class LiveContainerManager: ObservableObject {
         let fm = FileManager.default
         try ensureDirectories()
 
-        // Resolve the actual .app bundle from an .ipa archive or a raw .app.
+        // Resolve the actual .app bundle from an .ipa archive or a raw .app folder.
         let sourceBundle: URL
-        if url.pathExtension.lowercased() == "ipa" {
+        if url.pathExtension.lowercased() == "ipa" || url.pathExtension.lowercased() == "tipa" {
             let tmp = importsURL.appendingPathComponent(UUID().uuidString, conformingTo: .directory)
             try fm.createDirectory(at: tmp, withIntermediateDirectories: true)
             defer { try? fm.removeItem(at: tmp) }
-            try fm.unzipItem(at: url, to: tmp)
-            let payload = tmp.appendingPathComponent("Payload", conformingTo: .directory)
-            guard let entries = try? fm.contentsOfDirectory(
-                at: payload,
-                includingPropertiesForKeys: nil,
-                options: .skipsHiddenFiles
-            ) else { throw LiveContainerError.invalidBundle }
-            guard let app = entries.first(where: { $0.pathExtension == "app" }) else {
+            do {
+                try fm.unzipItem(at: url, to: tmp)
+            } catch {
+                throw LiveContainerError.installFailed("Could not unzip the IPA: \(error.localizedDescription)")
+            }
+            guard let app = Self.findAppBundle(in: tmp) else {
                 throw LiveContainerError.invalidBundle
             }
             sourceBundle = app
-        } else if url.pathExtension.lowercased() == "app"
-                    || ((try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false) {
-            sourceBundle = url
         } else {
-            throw LiveContainerError.invalidBundle
+            // Raw .app folder (or a folder containing one) picked from Files.
+            guard let app = Self.findAppBundle(in: url) else {
+                throw LiveContainerError.invalidBundle
+            }
+            sourceBundle = app
         }
 
+        print("LiveContainer: resolved app bundle at \(sourceBundle.path)")
         let info = Self.readInfoPlist(sourceBundle)
         guard let bundleID = info["CFBundleIdentifier"] as? String, !bundleID.isEmpty else {
-            throw LiveContainerError.missingInfoPlist
+            throw LiveContainerError.missingInfoPlist(sourceBundle.path)
         }
         let name = (info["CFBundleDisplayName"] as? String)
             ?? (info["CFBundleName"] as? String)
@@ -438,7 +438,56 @@ final class LiveContainerManager: ObservableObject {
     }
 
     private static func readInfoPlist(_ bundleURL: URL) -> [String: Any] {
-        NSDictionary(contentsOfFile: bundleURL.appendingPathComponent("Info.plist").path) as? [String: Any] ?? [:]
+        let url = bundleURL.appendingPathComponent("Info.plist")
+        guard FileManager.default.fileExists(atPath: url.path) else { return [:] }
+        // PropertyListSerialization handles both XML and binary Info.plists.
+        if let data = try? Data(contentsOf: url),
+           let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            as? [String: Any] {
+            return plist
+        }
+        return NSDictionary(contentsOfFile: url.path) as? [String: Any] ?? [:]
+    }
+
+    /// Locate the .app bundle (a directory with an Info.plist) inside a zip
+    /// extraction root, a Payload folder, or a directly imported app folder.
+    private static func findAppBundle(in root: URL) -> URL? {
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: .skipsHiddenFiles
+        ) else {
+            return nil
+        }
+
+        // If the root itself is an app bundle, use it.
+        if fm.fileExists(atPath: root.appendingPathComponent("Info.plist").path) {
+            return root
+        }
+
+        var checkedPayload = false
+        for item in items {
+            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            guard isDir else { continue }
+
+            if item.pathExtension.lowercased() == "app" {
+                if fm.fileExists(atPath: item.appendingPathComponent("Info.plist").path) {
+                    return item
+                }
+            } else if item.lastPathComponent.lowercased() == "payload" && !checkedPayload {
+                checkedPayload = true
+                if let app = findAppBundle(in: item) { return app }
+            }
+        }
+
+        // A single nested directory (e.g. the user picked the parent of an
+        // extracted app folder) — look one level deeper.
+        let appDirs = items.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false }
+        if appDirs.count == 1 {
+            return findAppBundle(in: appDirs[0])
+        }
+        return nil
     }
 
     private static func sanitize(_ string: String) -> String {

@@ -56,7 +56,7 @@ struct AppsView: View {
         }
         .fileImporter(
             isPresented: $showImporter,
-            allowedContentTypes: [ipaType, .applicationBundle, .folder],
+            allowedContentTypes: [ipaType, .applicationBundle],
             allowsMultipleSelection: true,
             onCompletion: handleImport
         )
