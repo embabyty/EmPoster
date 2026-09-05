@@ -65,6 +65,10 @@ struct EmPosterApp: App {
                 else if url.absoluteString.starts(with: "pocketposter://app-hash?uuid=") {
                     pbHash = url.absoluteString.replacingOccurrences(of: "pocketposter://app-hash?uuid=", with: "")
                 }
+                // Import IPA into the LiveContainer-style app container
+                else if url.pathExtension.lowercased() == "ipa" {
+                    LiveContainerManager.shared.handleIncomingIPA(url)
+                }
                 else if url.pathExtension == "tendies" {
                     if PosterBoardManager.shared.selectedTendies.count >= PosterBoardManager.MaxTendies {
                         UIApplication.shared.alert(title: NSLocalizedString("Max Tendies Reached", comment: ""), body: String(format: NSLocalizedString("You can only apply %@ descriptors.", comment: ""), "\(PosterBoardManager.MaxTendies)"))

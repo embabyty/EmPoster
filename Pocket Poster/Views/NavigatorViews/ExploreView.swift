@@ -47,7 +47,9 @@ struct ExploreView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 10)
                 
-                if wallpapers.isEmpty {
+                if wallpaperTypeShown == .custom && !patreonManager.isPro {
+                    lockedCustomSection
+                } else if wallpapers.isEmpty {
                     ProgressView()
                         .scaleEffect(1.75)
                         .navigationTitle("Explore")
@@ -167,6 +169,44 @@ struct ExploreView: View {
         }
     }
     
+    // MARK: - Locked Custom Section (non-Pro users)
+
+    private var lockedCustomSection: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(.yellow)
+
+            Text("Custom Wallpapers are Pro")
+                .font(.title3)
+                .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+
+            Text("Unlock the Custom wallpaper section — including free and Pro-only designs — with EmPoster Pro.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button(action: {
+                Haptic.shared.play(.light)
+                showSubscriptionSheet = true
+            }) {
+                Text("Unlock with Pro")
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(Capsule().fill(Color.yellow))
+                    .foregroundStyle(.black)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Wallpaper Loading
+
     func loadWallpapers() {
         Task {
             do {
