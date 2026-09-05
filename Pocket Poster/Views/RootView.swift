@@ -24,6 +24,10 @@ struct RootView: View {
                         Label("CarPlay", systemImage: "car")
                     }
             }
+            AppsView()
+                .tabItem {
+                    Label("Apps", systemImage: "app.badge")
+                }
             ExploreView()
                 .tabItem {
                     Label("Explore", systemImage: "safari")
