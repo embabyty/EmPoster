@@ -289,7 +289,7 @@ enum CommunityPreviewStore {
 
         let imageExts: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "gif"]
         var best: UIImage?
-        var bestSize: Int64 = -1
+        var bestSize: Int = -1
         if let enumerator = fm.enumerator(
             at: tempDir,
             includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
