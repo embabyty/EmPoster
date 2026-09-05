@@ -34,6 +34,7 @@ struct AppsView: View {
     @State private var showImporter = false
     @State private var showSubscriptionSheet = false
     @State private var shareItems: ShareItems?
+    @State private var settingsApp: InstalledApp?
 
     private let ipaType: UTType = UTType(filenameExtension: "ipa") ?? UTType(exportedAs: "com.embabyty.ipa")
 
@@ -50,6 +51,9 @@ struct AppsView: View {
         }
         .sheet(item: $shareItems) { items in
             ActivityView(items: items.items)
+        }
+        .sheet(item: $settingsApp) { app in
+            AppSettingsView(app: app)
         }
         .sheet(isPresented: $showSubscriptionSheet) {
             SubscriptionView()
@@ -72,7 +76,7 @@ struct AppsView: View {
                 List {
                     Section {
                         ForEach(lcManager.apps) { app in
-                            AppRow(app: app, onRun: { run(app) })
+                            AppRow(app: app, onRun: { run(app) }, onOpen: { settingsApp = app })
                                 .contextMenu { contextMenu(for: app) }
                         }
                         .onDelete(perform: uninstallApps)
@@ -359,6 +363,7 @@ struct AppsView: View {
 struct AppRow: View {
     let app: InstalledApp
     let onRun: () -> Void
+    let onOpen: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -401,5 +406,187 @@ struct AppRow: View {
             .accessibilityLabel("Run \(app.name)")
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
+    }
+}
+
+// MARK: - App Settings
+
+/// Per-app settings, LiveContainer-style. Currently includes the "Spoof SDK
+/// version" compatibility option plus data management actions.
+struct AppSettingsView: View {
+    let app: InstalledApp
+
+    @ObservedObject private var lcManager = LiveContainerManager.shared
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var spoofEnabled: Bool
+    @State private var spoofTarget: String
+    @State private var isWorking = false
+
+    init(app: InstalledApp) {
+        self.app = app
+        let status = LiveContainerManager.shared.spoofSDKStatus(for: app)
+        _spoofEnabled = State(initialValue: status.enabled)
+        _spoofTarget = State(initialValue: status.targetVersion)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 12) {
+                        icon
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(app.name)
+                                .font(.headline)
+                                .lineLimit(1)
+                            Text(app.bundleID)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                } header: {
+                    Text("App")
+                }
+
+                Section {
+                    LabeledContent("Version", value: app.version)
+                    LabeledContent("Minimum OS", value: app.minOSVersion ?? "—")
+                    LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: app.size, countStyle: .file))
+                    LabeledContent("Imported", value: app.importedAt.formatted(date: .abbreviated, time: .shortened))
+                }
+
+                Section {
+                    Toggle("Spoof SDK Version", isOn: spoofBinding)
+                    if spoofEnabled {
+                        TextField("e.g. 12.0", text: $spoofTarget)
+                            .keyboardType(.numbersAndPunctuation)
+                            .submitLabel(.done)
+                            .onSubmit { applySpoof() }
+                    }
+                } header: {
+                    Text("Compatibility")
+                } footer: {
+                    Text("Lowers the app's MinimumOSVersion (and DTPlatformVersion) so apps that require a newer iOS can be launched via LiveContainer. The original values are restored when you turn this off.")
+                }
+
+                if isWorking {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                }
+
+                Section {
+                    Button("Reset Data Container", role: .destructive) { resetData() }
+                    Button("Uninstall App", role: .destructive) { confirmUninstall() }
+                }
+            }
+            .navigationTitle(app.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .disabled(isWorking)
+        }
+    }
+
+    /// Direct state bindings, not onChange, so programmatic updates after
+    /// applying a setting don't loop back into another write.
+    private var spoofBinding: Binding<Bool> {
+        Binding(
+            get: { spoofEnabled },
+            set: { newValue in
+                spoofEnabled = newValue
+                applySpoof()
+            }
+        )
+    }
+
+    private var icon: some View {
+        if let icon = LiveContainerManager.shared.icon(for: app) {
+            return AnyView(
+                Image(uiImage: icon)
+                    .resizable()
+                    .frame(width: 44, height: 44)
+                    .cornerRadius(9)
+            )
+        } else {
+            return AnyView(
+                RoundedRectangle(cornerRadius: 9)
+                    .fill(Color(uiColor: .tertiarySystemFill))
+                    .frame(width: 44, height: 44)
+                    .overlay {
+                        Image(systemName: "app.fill")
+                            .foregroundStyle(.secondary)
+                    }
+            )
+        }
+    }
+
+    private func applySpoof() {
+        isWorking = true
+        Task {
+            do {
+                try await lcManager.setSpoofSDK(for: app, enabled: spoofEnabled, targetVersion: spoofTarget)
+                Haptic.shared.notify(.success)
+                let status = lcManager.spoofSDKStatus(for: app)
+                spoofEnabled = status.enabled
+                spoofTarget = status.targetVersion
+            } catch {
+                Haptic.shared.notify(.error)
+                UIApplication.shared.alert(title: "Could not apply setting", body: error.localizedDescription)
+                let status = lcManager.spoofSDKStatus(for: app)
+                spoofEnabled = status.enabled
+                spoofTarget = status.targetVersion
+            }
+            isWorking = false
+        }
+    }
+
+    private func resetData() {
+        UIApplication.shared.confirmAlert(
+            title: "Reset \(app.name)'s data?",
+            body: "Clears the app's data container inside EmPoster. The app bundle stays.",
+            onOK: {
+                Task {
+                    do {
+                        try await lcManager.resetData(app)
+                        Haptic.shared.notify(.success)
+                    } catch {
+                        Haptic.shared.notify(.error)
+                        UIApplication.shared.alert(title: "Reset failed", body: error.localizedDescription)
+                    }
+                }
+            },
+            noCancel: false
+        )
+    }
+
+    private func confirmUninstall() {
+        UIApplication.shared.confirmAlert(
+            title: "Uninstall \(app.name)?",
+            body: "Removes the app bundle and its data container from EmPoster. Your device is not affected.",
+            onOK: {
+                Task {
+                    do {
+                        try await lcManager.uninstall(app)
+                        Haptic.shared.notify(.success)
+                        dismiss()
+                    } catch {
+                        Haptic.shared.notify(.error)
+                        UIApplication.shared.alert(title: "Uninstall failed", body: error.localizedDescription)
+                    }
+                }
+            },
+            noCancel: false
+        )
     }
 }

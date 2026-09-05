@@ -62,6 +62,16 @@ struct InstalledApp: Identifiable, Hashable {
     let importedAt: Date
     /// Combined size of the app bundle + data container.
     let size: Int64
+    /// Whether the "Spoof SDK version" setting is on for this app.
+    let spoofSDKEnabled: Bool
+    /// The iOS version currently spoofed into the bundle's Info.plist.
+    let spoofSDKTarget: String?
+}
+
+/// Current state of the per-app "Spoof SDK version" setting.
+struct AppSpoofSettings {
+    let enabled: Bool
+    let targetVersion: String
 }
 
 final class LiveContainerManager: ObservableObject {
@@ -157,6 +167,26 @@ final class LiveContainerManager: ObservableObject {
         }.value
     }
 
+    /// Current "Spoof SDK version" state for an app (from Apps.plist).
+    func spoofSDKStatus(for app: InstalledApp) -> AppSpoofSettings {
+        let entry = loadMetadata()[app.bundleID] as? [String: Any]
+        return AppSpoofSettings(
+            enabled: (entry?["spoofSDKVersion"] as? Bool) ?? false,
+            targetVersion: (entry?["spoofSDKTarget"] as? String) ?? "12.0"
+        )
+    }
+
+    /// Turn the "Spoof SDK version" setting on/off. When enabled, the app
+    /// bundle's Info.plist is patched so the app believes it only requires an
+    /// older iOS (LiveContainer-style). Original values are saved and restored
+    /// when the setting is turned off.
+    func setSpoofSDK(for app: InstalledApp, enabled: Bool, targetVersion: String) async throws {
+        try await Task.detached(priority: .userInitiated) {
+            try self.performSetSpoofSDK(for: app, enabled: enabled, targetVersion: targetVersion)
+        }.value
+        refresh()
+    }
+
     // MARK: - Public helpers
 
     func icon(for app: InstalledApp) -> UIImage? {
@@ -196,6 +226,8 @@ final class LiveContainerManager: ObservableObject {
                 ?? ""
             let minOS = (entry?["minOSVersion"] as? String) ?? (infoPlist["MinimumOSVersion"] as? String)
             let containerName = (entry?["dataContainer"] as? String) ?? UUID().uuidString
+            let spoofEnabled = (entry?["spoofSDKVersion"] as? Bool) ?? false
+            let spoofTarget = entry?["spoofSDKTarget"] as? String
             let dataContainer = dataURL
                 .appendingPathComponent(bundleID, conformingTo: .directory)
                 .appendingPathComponent(containerName, conformingTo: .directory)
@@ -210,7 +242,9 @@ final class LiveContainerManager: ObservableObject {
                 appBundleURL: dir,
                 dataContainerURL: dataContainer,
                 importedAt: importedAt,
-                size: size
+                size: size,
+                spoofSDKEnabled: spoofEnabled,
+                spoofSDKTarget: spoofTarget
             ))
         }
 
@@ -265,44 +299,19 @@ final class LiveContainerManager: ObservableObject {
             try fm.createDirectory(at: tmp, withIntermediateDirectories: true)
             defer { try? fm.removeItem(at: tmp) }
 
-            // 1) Normal bulk extraction.
-            var unzipError: Error?
-            do {
-                try fm.unzipItem(at: url, to: tmp)
-            } catch {
-                unzipError = error
-                print("LiveContainer: bulk unzip failed (\(error.localizedDescription)); falling back to per-entry extraction")
+            // LiveContainer-style import: open the archive directly and walk
+            // its entries, extracting what we can and skipping anything broken
+            // (symlinks, bogus sizes, bad paths) instead of aborting.
+            guard let archive = try? Archive(url: url, accessMode: .read) else {
+                throw LiveContainerError.installFailed("Could not open the IPA as a ZIP archive. It may not be a real IPA.")
             }
-
-            // 2) If the bulk extraction produced no usable bundle, open the
-            //    archive and pull just the .app folder out, entry by entry,
-            //    skipping anything weird instead of aborting.
-            if let archive = try? Archive(url: url, accessMode: .read) {
-                if Self.findAppBundle(in: tmp) == nil,
-                   let folder = Self.appFolderPath(in: archive) {
-                    let appName = (folder as NSString).lastPathComponent
-                    let dest = tmp.appendingPathComponent(appName, conformingTo: .directory)
-                    if (try? Self.extractFolder(fromArchive: archive, folderPath: folder, to: dest)) == true {
-                        print("LiveContainer: extracted app folder \(folder) entry-by-entry")
-                    }
-                }
-            }
+            Self.extractAllSafely(from: archive, to: tmp)
+            print("LiveContainer: extracted \(url.lastPathComponent)")
 
             guard let app = Self.findAppBundle(in: tmp) else {
-                Self.logLayout(at: tmp, label: "Unzipped IPA contents")
-                // The zip genuinely has no app bundle inside: say so.
-                if let archive = try? Archive(url: url, accessMode: .read) {
-                    if Self.appFolderPath(in: archive) == nil {
-                        if let unzipError {
-                            throw LiveContainerError.installFailed("Could not unzip the IPA: \(unzipError.localizedDescription)")
-                        }
-                        throw LiveContainerError.noAppInArchive(url.path)
-                    }
-                }
-                // A zip with an app inside, but we couldn't materialize it on
-                // disk. Surface the extraction failure if there was one.
-                if let unzipError {
-                    throw LiveContainerError.installFailed("Could not unzip the IPA: \(unzipError.localizedDescription)")
+                Self.logLayout(at: tmp, label: "Extracted IPA contents")
+                if Self.appFolderPath(in: archive) == nil {
+                    throw LiveContainerError.noAppInArchive(url.path)
                 }
                 throw LiveContainerError.invalidBundle
             }
@@ -321,21 +330,12 @@ final class LiveContainerManager: ObservableObject {
         do {
             info = try Self.readInfoPlistThrowing(sourceBundle)
         } catch {
-            // The extracted copy may be broken (e.g. conflicts during
-            // extraction). Read the plist straight out of the zip.
+            // The extracted copy may be missing or broken; the zip itself may
+            // still hold a good copy. Read it straight out of the archive.
             if url.pathExtension.lowercased() == "ipa" || url.pathExtension.lowercased() == "tipa" {
                 if let fromArchive = try? Self.readInfoPlistFromArchive(try? Archive(url: url, accessMode: .read)) {
                     info = fromArchive.plist
                     print("LiveContainer: Info.plist read from the archive directly (on-disk copy was unreadable: \(error.localizedDescription))")
-                    // Patch the broken on-disk copy with the good bytes.
-                    if let archive = try? Archive(url: url, accessMode: .read),
-                       let entry = archive.first(where: {
-                           Self.normalizedEntryPath($0.path) == Self.normalizedEntryPath(fromArchive.folder) + "info.plist"
-                       }) {
-                        let dest = sourceBundle.appendingPathComponent("Info.plist")
-                        try? fm.removeItem(at: dest)
-                        _ = try? archive.extract(entry, to: dest)
-                    }
                 } else {
                     throw error
                 }
@@ -401,6 +401,56 @@ final class LiveContainerManager: ObservableObject {
             try fm.removeItem(at: app.dataContainerURL)
         }
         try fm.createDirectory(at: app.dataContainerURL, withIntermediateDirectories: true)
+    }
+
+    /// Patches or restores the app bundle's Info.plist for "Spoof SDK version".
+    /// Enabling lowers MinimumOSVersion (and DTPlatformVersion) so the app
+    /// thinks it runs on an older iOS; disabling restores the saved originals.
+    private func performSetSpoofSDK(for app: InstalledApp, enabled: Bool, targetVersion: String) throws {
+        guard let infoURL = Self.infoPlistURL(in: app.appBundleURL) else {
+            throw LiveContainerError.missingInfoPlist(app.appBundleURL.path)
+        }
+        var plist = try Self.readInfoPlistThrowing(app.appBundleURL)
+        var meta = loadMetadata()
+        var entry = (meta[app.bundleID] as? [String: Any]) ?? [:]
+
+        let target = targetVersion.trimmingCharacters(in: .whitespacesAndNewlines)
+        if enabled {
+            // e.g. "12.0", "15.1", "16"
+            let isValid = target.range(of: #"^\d+(\.\d+){0,2}$"#, options: .regularExpression) != nil
+            guard isValid else {
+                throw LiveContainerError.installFailed("Enter a valid iOS version like 12.0.")
+            }
+            // Remember the originals once so we can restore them later.
+            if entry["originalMinimumOSVersion"] == nil {
+                entry["originalMinimumOSVersion"] = plist["MinimumOSVersion"] as? String ?? ""
+            }
+            if entry["originalDTPlatformVersion"] == nil {
+                entry["originalDTPlatformVersion"] = plist["DTPlatformVersion"] as? String ?? ""
+            }
+            plist["MinimumOSVersion"] = target
+            plist["DTPlatformVersion"] = target
+            entry["spoofSDKVersion"] = true
+            entry["spoofSDKTarget"] = target
+        } else {
+            if let original = entry["originalMinimumOSVersion"] as? String, !original.isEmpty {
+                plist["MinimumOSVersion"] = original
+            } else {
+                plist.removeValue(forKey: "MinimumOSVersion")
+            }
+            if let original = entry["originalDTPlatformVersion"] as? String, !original.isEmpty {
+                plist["DTPlatformVersion"] = original
+            } else {
+                plist.removeValue(forKey: "DTPlatformVersion")
+            }
+            entry["spoofSDKVersion"] = false
+            entry.removeValue(forKey: "spoofSDKTarget")
+        }
+
+        let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+        try data.write(to: infoURL, options: .atomic)
+        meta[app.bundleID] = entry
+        try writeMetadata(meta)
     }
 
     private func performExportIPA(_ app: InstalledApp) throws -> URL {
@@ -515,8 +565,11 @@ final class LiveContainerManager: ObservableObject {
     /// count — those appear in mangled archives.
     private static func infoPlistURL(in bundleURL: URL) -> URL? {
         let fm = FileManager.default
-        for candidate in ["Info.plist", "Contents/Info.plist"] {
-            let url = bundleURL.appendingPathComponent(candidate)
+        let candidates = [
+            bundleURL.appendingPathComponent("Info.plist"),
+            bundleURL.appendingPathComponent("Contents").appendingPathComponent("Info.plist")
+        ]
+        for url in candidates {
             var isDir: ObjCBool = false
             if fm.fileExists(atPath: url.path, isDirectory: &isDir), !isDir.boolValue {
                 return url
@@ -647,6 +700,11 @@ final class LiveContainerManager: ObservableObject {
         }) else {
             throw LiveContainerError.noAppInArchive("<archive>")
         }
+        // A real Info.plist is a few KB; anything absurd means a corrupt
+        // archive, and extracting huge entries can crash the process.
+        guard entry.type == .file, entry.uncompressedSize <= 64 * 1024 * 1024 else {
+            throw LiveContainerError.unreadableInfoPlist(entry.path, "Info.plist is not a plain file in the archive")
+        }
         var data = Data()
         _ = try archive.extract(entry) { data.append($0) }
         guard let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil)
@@ -656,34 +714,72 @@ final class LiveContainerManager: ObservableObject {
         return (folder: folder, plist: plist)
     }
 
-    /// Extract every entry under `folderPath` in the archive into
-    /// `destination`, skipping any entry that fails instead of aborting.
-    private static func extractFolder(fromArchive archive: Archive, folderPath: String, to destination: URL) throws -> Bool {
+    /// Upper bound for a single entry we're willing to materialize. Real app
+    /// bundles never approach this; a corrupt archive can declare absurd
+    /// sizes that would make ZIPFoundation try to allocate gigabytes (crash).
+    private static let maxExtractedEntrySize: Int64 = 1 << 30 // 1 GiB
+
+    /// Extract every entry of an archive into `destination`, skipping anything
+    /// dangerous or broken instead of aborting (or crashing) — the same
+    /// tolerant behavior LiveContainer's libarchive extractor has.
+    private static func extractAllSafely(from archive: Archive, to destination: URL) {
         let fm = FileManager.default
-        let slashFolder = folderPath.replacingOccurrences(of: "\\", with: "/")
-        var extractedAny = false
         for entry in archive {
+            // Never materialize symlinks. Sideloaded bundles don't need them,
+            // and ZIPFoundation extracts a symlink by allocating its declared
+            // compressed size up front — a corrupt size crashes the app.
+            if entry.type == .symlink {
+                print("LiveContainer: skipped symlink entry \(entry.path)")
+                continue
+            }
+
+            // Reject path traversal and build the destination one component
+            // at a time (appending the raw string percent-encodes the "/").
             let slashPath = entry.path.replacingOccurrences(of: "\\", with: "/")
-            guard slashPath.lowercased().hasPrefix(slashFolder.lowercased()) else { continue }
-            let relative = String(slashPath.dropFirst(slashFolder.count))
-            guard !relative.isEmpty else { continue }
-            let dest = destination.appendingPathComponent(relative)
+            guard let components = safeRelativeComponents(slashPath) else {
+                print("LiveContainer: skipped entry with unsafe path \(entry.path)")
+                continue
+            }
+            var dest = destination
+            for component in components {
+                dest.appendPathComponent(component)
+            }
+
+            // Skip entries whose declared sizes are implausible (corrupt
+            // archive or zip bomb) — extracting them could exhaust memory.
+            if entry.uncompressedSize > maxExtractedEntrySize || entry.compressedSize > maxExtractedEntrySize {
+                print("LiveContainer: skipped oversized entry \(entry.path) (declared \(entry.uncompressedSize) bytes)")
+                continue
+            }
+
             do {
                 switch entry.type {
                 case .directory:
                     try fm.createDirectory(at: dest, withIntermediateDirectories: true, attributes: nil)
-                case .file, .symlink:
+                case .file:
                     if fm.fileExists(atPath: dest.path) {
                         try? fm.removeItem(at: dest)
                     }
                     _ = try archive.extract(entry, to: dest)
+                case .symlink:
+                    continue // handled above; unreachable
                 }
-                extractedAny = true
             } catch {
                 print("LiveContainer: skipped bad zip entry \(entry.path): \(error.localizedDescription)")
             }
         }
-        return extractedAny
+    }
+
+    /// Split a zip-relative path into safe path components, rejecting any
+    /// traversal (".."), self-references ("."), and empty segments.
+    private static func safeRelativeComponents(_ relative: String) -> [String]? {
+        var components: [String] = []
+        for raw in relative.split(separator: "/", omittingEmptySubsequences: true) {
+            let component = String(raw)
+            if component == ".." || component == "." { return nil }
+            components.append(component)
+        }
+        return components
     }
 
     private static func sanitize(_ string: String) -> String {
