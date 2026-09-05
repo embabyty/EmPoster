@@ -75,7 +75,7 @@ struct SubscriptionView: View {
                 .font(.largeTitle)
                 .fontWeight(.heavy)
 
-            Text("Unlock the full EmPoster experience by supporting us on Patreon.")
+            Text("Unlock the full EmPoster experience by supporting me on Patreon.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -174,7 +174,7 @@ struct SubscriptionView: View {
                                 .tint(.white)
                         } else {
                             Image(systemName: "person.badge.key")
-                            Text("Login with Patreon")
+                            Text("Sign into Patreon")
                                 .fontWeight(.semibold)
                         }
                     }

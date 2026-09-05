@@ -16,6 +16,13 @@ enum PatreonConfig {
     /// Only this Patreon account email can unlock EmPoster Pro.
     static let ownerEmail = "ios11emiry@gmail.com"
 
+    /// Additional Patreon accounts allowed to log in as staff.
+    /// Staff members can approve/reject community wallpaper submissions
+    /// (they also get Pro while logged in).
+    static let staffEmails: [String] = [
+        // e.g. "staff@example.com"
+    ]
+
     /// Patreon OAuth client ID (Patreon → My page → Apps & Webhooks → Create client).
     static let clientID = "A3WtRmw4CkNkPw1zEMvmg38GYiCn5VdtRs0v5Ej01PKT-VtMv924XIvhtwajaV_W"
 
@@ -51,6 +58,12 @@ final class PatreonManager: ObservableObject {
         didSet { UserDefaults.standard.set(isPro, forKey: UserDefaultsKey.isPro) }
     }
 
+    /// Whether the logged-in patron has pledged at the Ultra tier.
+    /// Ultra unlocks everything Pro does (isPro is also set to true).
+    @Published private(set) var isUltra: Bool {
+        didSet { UserDefaults.standard.set(isUltra, forKey: UserDefaultsKey.isUltra) }
+    }
+
     @Published private(set) var isLoggedIn: Bool {
         didSet { UserDefaults.standard.set(isLoggedIn, forKey: UserDefaultsKey.isLoggedIn) }
     }
@@ -78,6 +91,7 @@ final class PatreonManager: ObservableObject {
 
     private enum UserDefaultsKey {
         static let isPro = "isProPatreon"
+        static let isUltra = "isUltraPatreon"
         static let isLoggedIn = "isLoggedInPatreon"
         static let memberName = "patreonMemberName"
         static let memberEmail = "patreonMemberEmail"
@@ -86,6 +100,7 @@ final class PatreonManager: ObservableObject {
 
     private init() {
         isPro = UserDefaults.standard.bool(forKey: UserDefaultsKey.isPro)
+        isUltra = UserDefaults.standard.bool(forKey: UserDefaultsKey.isUltra)
         isLoggedIn = UserDefaults.standard.bool(forKey: UserDefaultsKey.isLoggedIn)
         memberName = UserDefaults.standard.string(forKey: UserDefaultsKey.memberName)
         memberEmail = UserDefaults.standard.string(forKey: UserDefaultsKey.memberEmail)
@@ -232,11 +247,12 @@ final class PatreonManager: ObservableObject {
     }
 
     /// Fetches the logged-in Patreon identity and grants Pro only to the owner.
+    /// If the patron's pledge tier is "Ultra", the Ultra tier is unlocked too.
     func refreshMembership(accessToken: String?) async {
         guard let accessToken, !accessToken.isEmpty else { return }
 
         do {
-            var request = URLRequest(url: URL(string: "https://www.patreon.com/api/oauth2/v2/identity?fields%5Buser%5D=email,full_name")!)
+            var request = URLRequest(url: URL(string: "https://www.patreon.com/api/oauth2/v2/identity?include=memberships&fields%5Buser%5D=email,full_name&fields%5Bmember%5D=currently_entitled_amount_cents&fields%5Btier%5D=title")!)
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -252,20 +268,36 @@ final class PatreonManager: ObservableObject {
             let email = attrs["email"] as? String
             let name = attrs["full_name"] as? String
 
-            guard let email, email.lowercased() == PatreonConfig.ownerEmail.lowercased() else {
-                lastError = "This Patreon account is not authorized for EmPoster Pro."
+            guard let email else {
+                lastError = "This Patreon account is not authorized for EmPoster."
                 UIApplication.shared.alert(
                     title: "Not Authorized",
-                    body: "EmPoster Pro is only available for the app owner's Patreon account."
+                    body: "Only the app owner and approved staff Patreon accounts can use EmPoster."
                 )
                 return
             }
 
+            let isOwner = email.lowercased() == PatreonConfig.ownerEmail.lowercased()
+            let isStaff = PatreonConfig.staffEmails.contains(email.lowercased())
+            guard isOwner || isStaff else {
+                lastError = "This Patreon account is not authorized for EmPoster."
+                UIApplication.shared.alert(
+                    title: "Not Authorized",
+                    body: "Only the app owner and approved staff Patreon accounts can use EmPoster."
+                )
+                return
+            }
+
+            // Read the pledge tier from the Patreon membership so a patron who
+            // joined the Ultra tier on the Patreon page unlocks Ultra in-app.
+            let tierTitle = membershipTierTitle(from: json)
+
             isLoggedIn = true
             memberEmail = email
             memberName = name
-            tier = "Owner"
             isPro = true
+            isUltra = tierTitle?.localizedCaseInsensitiveContains("ultra") == true
+            tier = isUltra ? (tierTitle ?? "Ultra") : "Owner"
             lastError = nil
         } catch {
             lastError = error.localizedDescription
@@ -273,8 +305,35 @@ final class PatreonManager: ObservableObject {
         }
     }
 
+    /// Extracts the title of the campaign tier the patron is entitled to
+    /// (e.g. "Ultra") from the Patreon identity response.
+    private func membershipTierTitle(from json: [String: Any]) -> String? {
+        guard let included = json["included"] as? [[String: Any]] else { return nil }
+
+        // The membership relationship points at the entitled tier.
+        var tierID: String?
+        for item in included where (item["type"] as? String) == "member" {
+            guard let relationships = item["relationships"] as? [String: Any],
+                  let tier = relationships["tier"] as? [String: Any],
+                  let data = tier["data"] as? [String: Any],
+                  let id = data["id"] as? String else { continue }
+            tierID = id
+            break
+        }
+
+        guard let tierID else { return nil }
+        for item in included where (item["type"] as? String) == "tier" && (item["id"] as? String) == tierID {
+            if let attrs = item["attributes"] as? [String: Any],
+               let title = attrs["title"] as? String {
+                return title
+            }
+        }
+        return nil
+    }
+
     func logOut() {
         isPro = false
+        isUltra = false
         isLoggedIn = false
         memberName = nil
         memberEmail = nil

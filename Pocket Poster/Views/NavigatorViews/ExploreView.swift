@@ -4,253 +4,156 @@
 //
 //  Created by lemin on 7/6/25.
 //
+//  Community tendie wallpaper library. Wallpapers shown here were
+//  submitted in the Create tab and approved by staff — everyone can
+//  browse and add them to their own collections.
+//
 
 import SwiftUI
-import CachedAsyncImage
 
 let MIN_SIZE: CGFloat = 165
 let CORNER_RADIUS: CGFloat = 12
 
 struct ExploreView: View {
-    @ObservedObject var cowabungaAPI = CowabungaAPI.shared
-    @ObservedObject private var patreonManager = PatreonManager.shared
-    
-    // lazyvgrid
-    @State private var gridItemLayout = [GridItem(.adaptive(minimum: MIN_SIZE))]
-    @State private var wallpapers: [DownloadableWallpaper] = []
-    
-    @State var wallpaperTypeSelected = 0
-    @State var wallpaperTypeShown = DownloadableWallpaper.WallpaperType.custom
-    
-    @State var filterType: FilterType = .random
+    @ObservedObject private var community = CommunityManager.shared
+
     @State var searchTerm: String = ""
-    
-    @State private var showSubscriptionSheet = false
-    
+
+    private var filtered: [TendieSubmission] {
+        guard !searchTerm.isEmpty else { return community.approved }
+        let query = searchTerm.lowercased()
+        return community.approved.filter { submission in
+            submission.title.lowercased().contains(query) ||
+            submission.description.lowercased().contains(query) ||
+            submission.tags.joined(separator: " ").lowercased().contains(query) ||
+            submission.authorName.lowercased().contains(query)
+        }
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
-                PullToRefresh(coordinateSpaceName: "pullToRefresh") {
-                    // refresh
-                    wallpapers.removeAll()
-                    Haptic.shared.play(.light)
-                    //URLCache.imageCache.removeAllCachedResponses()
-                    loadWallpapers()
-                }
-                VStack {
-                    Picker("", selection: $wallpaperTypeSelected) {
-                        Text("Custom").tag(0)
-                        Text("Apple").tag(1)
-                    }
-                    .pickerStyle(.segmented)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 10)
-                
-                if wallpaperTypeShown == .custom && !patreonManager.isPro {
-                    lockedCustomSection
-                } else if wallpapers.isEmpty {
-                    ProgressView()
-                        .scaleEffect(1.75)
-                        .navigationTitle("Explore")
+                if filtered.isEmpty {
+                    emptyState
                 } else {
-                    LazyVGrid(columns: gridItemLayout) {
-                        ForEach(wallpapers) { wallpaper in
-                            if searchTerm == "" || wallpaper.name.lowercased().contains(searchTerm.lowercased()) || (wallpaper.authors ?? "").lowercased().contains(searchTerm.lowercased()) {
-                                Button(action: {
-                                    if wallpaper.pro == true && !patreonManager.isPro {
-                                        // Pro-only wallpaper — prompt to subscribe instead.
-                                        Haptic.shared.play(.light)
-                                        showSubscriptionSheet = true
-                                    } else {
-                                        DownloadManager.shared.startTendiesDownload(for: cowabungaAPI.getDownloadURLForWallpaper(wallpaper: wallpaper))
-                                    }
-                                }) {
-                                    VStack(spacing: 0) {
-                                        ZStack {
-                                            Color.gray.opacity(0.4)
-                                            if wallpaper.previewIsGif() {
-                                                GIFImage(url: cowabungaAPI.getPreviewURLForWallpaper(wallpaper: wallpaper), animate: true, loop: true)
-                                                    .aspectRatio(contentMode: .fit)
-                                                    .frame(maxWidth: .infinity)
-                                            } else {
-                                                CachedAsyncImage(url: cowabungaAPI.getPreviewURLForWallpaper(wallpaper: wallpaper), urlCache: .imageCache) { image in
-                                                    image
-                                                        .resizable()
-                                                        .aspectRatio(contentMode: .fit)
-                                                        .frame(maxWidth: .infinity)
-                                                } placeholder: {
-                                                    Color.gray
-                                                        .frame(height: MIN_SIZE)
-                                                }
-                                            }
-
-                                            // Yellow crown badge for Pro-only wallpapers.
-                                            if wallpaper.pro == true {
-                                                Image(systemName: "crown.fill")
-                                                    .font(.subheadline)
-                                                    .foregroundStyle(.yellow)
-                                                    .padding(6)
-                                                    .background(Circle().fill(Color.black.opacity(0.35)))
-                                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                                                    .padding(6)
-                                            }
-                                        }
-                                        .cornerRadius(CORNER_RADIUS, corners: .topLeft)
-                                        .cornerRadius(CORNER_RADIUS, corners: .topRight)
-                                        HStack {
-                                            VStack(spacing: 4) {
-                                                HStack {
-                                                    Text(wallpaper.name)
-                                                        .foregroundStyle(Color(uiColor: .label))
-                                                        .minimumScaleFactor(0.5)
-                                                    Spacer()
-                                                }
-                                                if let authors = wallpaper.authors {
-                                                    HStack {
-                                                        Text(authors)
-                                                            .foregroundColor(.secondary)
-                                                            .font(.caption)
-                                                            .minimumScaleFactor(0.5)
-                                                        Spacer()
-                                                    }
-                                                }
-                                            }
-                                            .lineLimit(1)
-                                            Spacer()
-                                            if wallpaper.pro == true && !patreonManager.isPro {
-                                                Image(systemName: "lock.fill")
-                                                    .foregroundColor(.yellow)
-                                            } else {
-                                                Image(systemName: "arrow.down.circle")
-                                                    .foregroundColor(.blue)
-                                            }
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .frame(height: 58)
-                                    }
-                                }
-                                .frame(minWidth: MIN_SIZE)
-                                .background(Color(uiColor: .secondarySystemBackground))
-                                .cornerRadius(CORNER_RADIUS)
-                                .padding(4)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: MIN_SIZE))]) {
+                        ForEach(filtered) { submission in
+                            Button(action: {
+                                Haptic.shared.play(.light)
+                                addToTendies(submission)
+                            }) {
+                                submissionCard(submission)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding()
                 }
             }
             .searchable(text: $searchTerm)
-            .coordinateSpace(name: "pullToRefresh")
             .navigationTitle("Explore")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showFilterChangerPopup()
-                    }) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                    }
-                }
-            }
-        }
-        .onAppear {
-            loadWallpapers()
-        }
-        .sheet(isPresented: $showSubscriptionSheet) {
-            SubscriptionView()
-        }
-        .onChange(of: wallpaperTypeSelected) { newValue in
-            let map = [0: DownloadableWallpaper.WallpaperType.custom, 1: .apple, 2: .template]
-            wallpaperTypeShown = map[newValue]!
-            
-            wallpapers.removeAll()
-            loadWallpapers()
         }
     }
-    
-    // MARK: - Locked Custom Section (non-Pro users)
 
-    private var lockedCustomSection: some View {
+    // MARK: - Card
+
+    private func submissionCard(_ submission: TendieSubmission) -> some View {
+        VStack(spacing: 0) {
+            TendiePreviewImage(
+                storagePath: community.firebaseAvailable ? submission.previewPath : nil,
+                storedFileName: community.firebaseAvailable ? nil : submission.tendieFiles.first
+            )
+            .aspectRatio(9 / 16.0, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .cornerRadius(CORNER_RADIUS, corners: .topLeft)
+            .cornerRadius(CORNER_RADIUS, corners: .topRight)
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(submission.title)
+                        .foregroundStyle(Color(uiColor: .label))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                    Text(submission.authorName)
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "arrow.down.circle")
+                    .foregroundColor(.blue)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(height: 58)
+        }
+        .background(Color(uiColor: .secondarySystemBackground))
+        .cornerRadius(CORNER_RADIUS)
+        .padding(4)
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "crown.fill")
+            Image(systemName: "photo.on.rectangle.angled")
                 .font(.system(size: 56))
-                .foregroundStyle(.yellow)
+                .foregroundStyle(.secondary)
 
-            Text("Custom Wallpapers are Pro")
+            Text(searchTerm.isEmpty ? "No Community Wallpapers Yet" : "No Results")
                 .font(.title3)
                 .fontWeight(.bold)
-                .multilineTextAlignment(.center)
 
-            Text("Unlock the Custom wallpaper section — including free and Pro-only designs — with EmPoster Pro.")
+            Text(searchTerm.isEmpty
+                 ? "Wallpapers submitted in the Create tab appear here once staff approves them."
+                 : "Try a different search term.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-
-            Button(action: {
-                Haptic.shared.play(.light)
-                showSubscriptionSheet = true
-            }) {
-                Text("Unlock with Pro")
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(Capsule().fill(Color.yellow))
-                    .foregroundStyle(.black)
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 4)
         }
         .padding(32)
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Wallpaper Loading
+    // MARK: - Add to Tendies
 
-    func loadWallpapers() {
+    private func addToTendies(_ submission: TendieSubmission) {
+        let pbManager = PosterBoardManager.shared
+
+        guard pbManager.selectedTendies.count + submission.tendieFiles.count <= PosterBoardManager.MaxTendies else {
+            Haptic.shared.notify(.error)
+            UIApplication.shared.alert(
+                title: NSLocalizedString("Max Tendies Reached", comment: ""),
+                body: String(format: NSLocalizedString("You can only apply %@ descriptors.", comment: ""), "\(PosterBoardManager.MaxTendies)")
+            )
+            return
+        }
+
         Task {
             do {
-                wallpapers = try await cowabungaAPI.fetchWallpapers(type: wallpaperTypeShown)
-                wallpapers = cowabungaAPI.filterWallpapers(wallpapers: wallpapers, filterType: filterType)
+                for file in submission.tendieFiles {
+                    let newURL: URL
+                    if community.firebaseAvailable {
+                        newURL = try await DownloadManager.shared.downloadTendie(storagePath: file)
+                    } else {
+                        newURL = try DownloadManager.shared.copyTendies(from: community.localTendieURL(forStoredFile: file))
+                    }
+                    await MainActor.run {
+                        pbManager.selectedTendies.append(newURL)
+                    }
+                }
+                await MainActor.run {
+                    Haptic.shared.notify(.success)
+                    UIApplication.shared.alert(
+                        title: "Added to Tendies",
+                        body: "\"\(submission.title)\" was added to your collections. Apply it from the Tendies tab."
+                    )
+                }
             } catch {
-                UIApplication.shared.alert(title: NSLocalizedString("Failed to fetch wallpapers", comment: ""), body: error.localizedDescription)
+                Haptic.shared.notify(.error)
+                UIApplication.shared.alert(body: error.localizedDescription)
             }
         }
-    }
-    
-    func showFilterChangerPopup() {
-        // create and configure alert controller
-        let alert = UIAlertController(title: NSLocalizedString("Filter Wallpapers", comment: ""), message: "", preferredStyle: .actionSheet)
-        
-        // create the actions
-        for type in FilterType.allCases {
-            let newAction = UIAlertAction(title: type.rawValue, style: .default) { (action) in
-                // apply the filter type
-                filterType = type
-                wallpapers.removeAll()
-                loadWallpapers()
-            }
-            if filterType == type {
-                // add a check mark
-                newAction.setValue(true, forKey: "checked")
-            }
-            alert.addAction(newAction)
-        }
-        
-        let cancelAction = UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel) { (action) in
-            // cancels the action
-        }
-        
-        // add the actions
-        alert.addAction(cancelAction)
-        
-        let view: UIView = UIApplication.shared.windows.first!.rootViewController!.view
-        // present popover for iPads
-        alert.popoverPresentationController?.sourceView = view // prevents crashing on iPads
-        alert.popoverPresentationController?.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.maxY, width: 0, height: 0) // show up at center bottom on iPads
-        
-        // present the alert
-        UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
     }
 }
 
