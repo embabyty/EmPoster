@@ -146,7 +146,7 @@ struct ExploreView: View {
                     Haptic.shared.notify(.success)
                     UIApplication.shared.alert(
                         title: "Added to Tendies",
-                        body: "\"\(submission.title)\" was added to your collections. Apply it from the Tendies tab."
+                        body: "\"\(submission.title)\" was added to your collections. Apply it from the Tendies menu on the Home tab."
                     )
                 }
             } catch {

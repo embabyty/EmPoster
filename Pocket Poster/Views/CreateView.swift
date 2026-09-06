@@ -21,10 +21,32 @@ struct CreateView: View {
     @State private var description = ""
     @State private var tagsText = ""
     @State private var showSubmittedAlert = false
+    @State private var hasScreenRecorded = false
 
     var body: some View {
         NavigationStack {
             Form {
+                // MARK: Screen Recording (required before importing)
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("You must screen record the tendie wallpaper before importing the Tendie file.")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Text("Open the tendie wallpaper on your device, swipe up to open Control Center, and start a screen recording. Let it record until the wallpaper is fully visible, then stop and import the Tendie file below.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Toggle("I've screen recorded the tendie wallpaper", isOn: $hasScreenRecorded)
+                            .font(.subheadline)
+                    }
+                    .padding(.vertical, 2)
+                } header: {
+                    Label("Screen Recording Required", systemImage: "record.circle")
+                } footer: {
+                    Text(hasScreenRecorded
+                         ? "Thanks! You can now import your Tendie file."
+                         : "You can't import a Tendie file until you confirm you've screen recorded the wallpaper.")
+                }
+
                 // MARK: Tendies
                 Section {
                     Button {
@@ -33,6 +55,7 @@ struct CreateView: View {
                     } label: {
                         Label(storedFiles.isEmpty ? "Import Tendies" : "Import More Tendies", systemImage: "tray.and.arrow.down")
                     }
+                    .disabled(!hasScreenRecorded)
                     if !storedFiles.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
@@ -168,6 +191,7 @@ struct CreateView: View {
             title = ""
             description = ""
             tagsText = ""
+            hasScreenRecorded = false
             Haptic.shared.notify(.success)
             showSubmittedAlert = true
         }
