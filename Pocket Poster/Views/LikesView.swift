@@ -40,11 +40,14 @@ struct LikesView: View {
                 .frame(width: 44, height: 44)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("You liked ")
-                    .foregroundStyle(.secondary)
-                + Text("@\(submission.authorName)'s wallpaper")
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
+                HStack(spacing: 4) {
+                    Text("You liked")
+                        .foregroundStyle(.secondary)
+                    Text("@\(submission.authorName)'s wallpaper")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                }
+                .lineLimit(2)
                 Text(timeAgo(likes.likedAt[submission.id] ?? submission.createdAt))
                     .font(.caption)
                     .foregroundStyle(.secondary)
